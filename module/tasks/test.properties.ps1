@@ -19,3 +19,36 @@ $PesterOutputFilePath = "PesterTestResults.xml"
 
 # Synopsis: The Pester show options.
 $PesterShowOptions = @("Summary","Fails")
+
+# Synopsis: When true, code coverage will be enabled for Pester tests.
+$PesterCodeCoverageEnabled = $false
+
+# Synopsis: The path(s) to analyze for code coverage. Defaults to the module functions directory.
+$PesterCodeCoveragePath = @()
+
+# Synopsis: The output format for code coverage reports.
+$PesterCodeCoverageOutputFormat = "JaCoCo"
+
+# Synopsis: The file path for the code coverage report.
+$PesterCodeCoverageOutputPath = "CodeCoverage.xml"
+
+# Synopsis: The minimum code coverage percentage required to pass.
+$PesterCodeCoverageThreshold = 0
+
+# Synopsis: Tags to include when running Pester tests.
+$PesterTagFilter = @()
+
+# Synopsis: Tags to exclude when running Pester tests.
+$PesterExcludeTagFilter = @()
+
+# Synopsis: Additional output formats for test results (array of formats).
+$PesterAdditionalOutputFormats = @()
+
+# Synopsis: Additional output paths corresponding to additional formats.
+$PesterAdditionalOutputPaths = @()
+
+# Synopsis: The verbosity level for Pester output.
+$PesterVerbosity = $null
+
+# Synopsis: When true, enables parallel test execution (requires Pester v6 or newer).
+$PesterParallelEnabled = $false
