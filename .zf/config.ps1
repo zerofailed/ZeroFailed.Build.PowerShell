@@ -12,7 +12,9 @@ $zerofailedExtensions = @(
 
 # Set the required build options
 $PesterTestsDir = "$here/module"
-$PesterVersion = "5.5.0"
+$PesterCodeCoveragePaths = @("$here/module/functions")
+$PesterCodeCoverageOutputPath = Join-Path $CoverageDir 'pester-code-coverage.xml'
+$SkipEnsureGitHubCli = $true
 
 # Customise the build process
 task . FullBuild
