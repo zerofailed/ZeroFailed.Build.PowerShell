@@ -42,7 +42,7 @@ task RunPesterTests `
     } elseif ($PesterShowOptions -contains "All" -or $PesterShowOptions -contains "Describe" -or $PesterShowOptions -contains "Context") {
         $config.Output.Verbosity = 'Detailed'
     } elseif ($PesterShowOptions -contains "Summary" -and $PesterShowOptions.Count -eq 1) {
-        $config.Output.Verbosity = 'None'  # Use 'None' for minimal output instead of 'Minimal'
+        $config.Output.Verbosity = 'Minimal'  # Use 'Minimal' for summary-only output to provide basic feedback
     } else {
         $config.Output.Verbosity = 'Normal'
     }
