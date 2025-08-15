@@ -23,7 +23,7 @@ $PesterShowOptions = @("Summary","Fails")
 # Synopsis: When true, code coverage will be enabled for Pester tests.
 $PesterCodeCoverageEnabled = $true
 
-# Synopsis: The path(s) to analyze for code coverage. Defaults to the module functions directory.
+# Synopsis: The path(s) to analyze for code coverage.
 $PesterCodeCoveragePaths = @()
 
 # Synopsis: The output format for code coverage reports.
@@ -49,6 +49,3 @@ $PesterAdditionalOutputPaths = @()
 
 # Synopsis: The verbosity level for Pester output.
 $PesterVerbosity = $null
-
-# Synopsis: When true, enables parallel test execution (requires Pester v6 or newer).
-$PesterParallelEnabled = $false

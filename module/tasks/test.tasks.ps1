@@ -55,11 +55,6 @@ task RunPesterTests `
         $config.Filter.ExcludeTag = $PesterExcludeTagFilter
     }
 
-    # Configure parallel execution if enabled (only available in Pester v6+)
-    if ($PesterParallelEnabled) {
-        Write-Warning "Parallel execution requires Pester v6 or newer. Current version: $PesterVersion"
-    }
-
     # Configure code coverage if enabled
     if ($PesterCodeCoverageEnabled) {
         $config.CodeCoverage.Enabled = $true
