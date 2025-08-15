@@ -66,39 +66,12 @@ task RunPesterTests `
         $config.CodeCoverage.OutputFormat = $PesterCodeCoverageOutputFormat
         $config.CodeCoverage.OutputPath = $PesterCodeCoverageOutputPath
         
-        # Set coverage path - default to functions directory if not specified
-        if ($PesterCodeCoveragePath.Count -gt 0) {
-            $config.CodeCoverage.Path = $PesterCodeCoveragePath
-        } else {
-            # Default to functions directory if it exists and has files
-            $functionsDir = Join-Path $PesterTestsDir "functions"
-            if (Test-Path $functionsDir) {
-                $functionFiles = Get-ChildItem -Path $functionsDir -Filter "*.ps1" -File
-                if ($functionFiles.Count -gt 0) {
-                    $config.CodeCoverage.Path = @("$functionsDir/*.ps1")
-                }
-            }
-            
-            # If no functions directory or it's empty, default to task files for coverage
-            if (-not $config.CodeCoverage.Path) {
-                $tasksDir = Join-Path $PesterTestsDir "tasks"
-                if (Test-Path $tasksDir) {
-                    $taskFiles = Get-ChildItem -Path $tasksDir -Filter "*.ps1" -File | Where-Object { $_.Name -notmatch "\.Tests\.ps1$" }
-                    if ($taskFiles.Count -gt 0) {
-                        $config.CodeCoverage.Path = @("$tasksDir/*.ps1")
-                        # Exclude test files from coverage
-                        $config.CodeCoverage.ExcludeTests = $true
-                    }
-                }
-            }
-            
-            # Final fallback: analyze the main module file
-            if (-not $config.CodeCoverage.Path) {
-                $moduleFile = Join-Path $PesterTestsDir "*.psm1"
-                if (Test-Path $moduleFile) {
-                    $config.CodeCoverage.Path = @($moduleFile)
-                }
-            }
+        # Set coverage path - default to build directory if not specified
+        if ($PesterCodeCoveragePaths.Count -gt 0) {
+            $config.CodeCoverage.Path = $PesterCodeCoveragePaths
+        }
+        else {
+            $config.CodeCoverage.Path = $PWD
         }
     }
 
