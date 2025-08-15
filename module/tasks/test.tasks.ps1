@@ -40,9 +40,14 @@ task RunPesterTests `
     if ($PesterVerbosity) {
         $config.Output.Verbosity = $PesterVerbosity
     } elseif ($PesterShowOptions -contains "All" -or $PesterShowOptions -contains "Describe" -or $PesterShowOptions -contains "Context") {
+        Write-Build Yellow "Mapping deprecated PesterShowOptions to 'Detailed' verbosity - considering replacing `$PesterShowOptions with the `$PesterVerbosity property"
         $config.Output.Verbosity = 'Detailed'
     } elseif ($PesterShowOptions -contains "Summary" -and $PesterShowOptions.Count -eq 1) {
-        $config.Output.Verbosity = 'Minimal'  # Use 'Minimal' for summary-only output to provide basic feedback
+        Write-Build Yellow "Mapping deprecated PesterShowOptions to 'Minimal' verbosity - considering replacing `$PesterShowOptions with the `$PesterVerbosity property"
+        $config.Output.Verbosity = 'Minimal'
+    } elseif ($PesterShowOptions -contains "None") {
+        Write-Build Yellow "Mapping deprecated PesterShowOptions to 'None' verbosity - considering replacing `$PesterShowOptions with the `$PesterVerbosity property"
+        $config.Output.Verbosity = 'None'
     } else {
         $config.Output.Verbosity = 'Normal'
     }

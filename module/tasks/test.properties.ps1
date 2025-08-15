@@ -18,7 +18,7 @@ $PesterOutputFormat = "NUnitXml"
 $PesterOutputFilePath = "PesterTestResults.xml"
 
 # Synopsis: The Pester show options.
-$PesterShowOptions = @("Summary","Fails")
+$PesterShowOptions = @()
 
 # Synopsis: When true, code coverage will be enabled for Pester tests.
 $PesterCodeCoverageEnabled = $true
