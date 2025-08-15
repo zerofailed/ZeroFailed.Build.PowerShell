@@ -25,7 +25,6 @@
    - No configuration object approach
    - Limited output format options
    - No filtering capabilities (tags, etc.)
-   - No parallel execution support
 
 3. **Current properties** (in `test.properties.ps1`):
    ```powershell
@@ -68,7 +67,7 @@ $results = Invoke-Pester -Configuration $config
 $PesterCodeCoverageEnabled = $false
 
 # Synopsis: The path(s) to analyze for code coverage. Defaults to the module functions directory.
-$PesterCodeCoveragePath = @()
+$PesterCodeCoveragePaths = @()
 
 # Synopsis: The output format for code coverage reports.
 $PesterCodeCoverageOutputFormat = "JaCoCo"
@@ -113,23 +112,10 @@ $PesterParallelEnabled = $false
 **Objective**: Ensure all functionality works correctly
 
 **Tasks**:
-1. Create comprehensive tests for new functionality:
-   - `test.tasks.Tests.ps1` - Test the task behavior
-   - Test all property combinations
-   - Validate configuration object creation
-   - Test error handling
-
-2. Ensure existing tests pass:
+1. Ensure existing tests pass:
    - Run module validation tests
    - Verify backward compatibility
    - Test default behavior unchanged
-
-**Test scenarios**:
-- Default configuration (no breaking changes)
-- Code coverage enabled/disabled
-- Multiple output formats
-- Tag filtering
-- Error conditions (invalid paths, formats)
 
 ### Phase 5: Documentation & Polish
 **Objective**: Complete implementation with proper documentation
@@ -172,11 +158,6 @@ $PesterParallelEnabled = $false
    - Update `RunPesterTests` task implementation
    - Replace legacy `Invoke-Pester` syntax
    - Add configuration object building logic
-
-### New Files
-3. **`module/tasks/test.tasks.Tests.ps1`**:
-   - Comprehensive tests for task functionality
-   - Validate all new properties and configurations
 
 ## Success Criteria
 1. All existing tests pass without modification
