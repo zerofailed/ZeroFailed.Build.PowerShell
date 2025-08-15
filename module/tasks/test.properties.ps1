@@ -21,19 +21,19 @@ $PesterOutputFilePath = "PesterTestResults.xml"
 $PesterShowOptions = @("Summary","Fails")
 
 # Synopsis: When true, code coverage will be enabled for Pester tests.
-$PesterCodeCoverageEnabled = $false
+$PesterCodeCoverageEnabled = $true
 
 # Synopsis: The path(s) to analyze for code coverage. Defaults to the module functions directory.
-$PesterCodeCoveragePath = @()
+$PesterCodeCoveragePaths = @()
 
 # Synopsis: The output format for code coverage reports.
-$PesterCodeCoverageOutputFormat = "JaCoCo"
+$PesterCodeCoverageOutputFormat = "Cobertura"
 
 # Synopsis: The file path for the code coverage report.
-$PesterCodeCoverageOutputPath = "CodeCoverage.xml"
+$PesterCodeCoverageOutputPath = "PesterCodeCoverage.xml"
 
 # Synopsis: The minimum code coverage percentage required to pass.
-$PesterCodeCoverageThreshold = 0
+$PesterCodeCoverageThreshold = 75
 
 # Synopsis: Tags to include when running Pester tests.
 $PesterTagFilter = @()
