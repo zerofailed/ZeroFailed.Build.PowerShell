@@ -43,21 +43,29 @@ This group contains features for testing your PowerShell projects using [Pester]
 
 ### Properties
 
-| Name                   | Default Value           | ENV Override | Description                                                                   |
-| ---------------------- | ----------------------- | ------------ | ----------------------------------------------------------------------------- |
-| `PesterOutputFilePath` | "PesterTestResults.xml" |              | The file path for the Pester test results.                                    |
-| `PesterOutputFormat`   | "NUnitXml"              |              | The Pester output format.                                                     |
-| `PesterShowOptions`    | @("Summary","Fails")    |              | The Pester show options.                                                      |
-| `PesterTestsDir`       | $null                   |              | The directory containing the Pester tests. Defaults to the current directory. |
-| `PesterVersion`        | "5.7.1"                 |              | The version of Pester to use for testing.                                     |
-| `SkipPesterTests`      | $false                  |              | When true, all Pester tests will be skipped.                                  |
+| Name                             | Default Value            | ENV Override | Description                                                                                                |
+| -------------------------------- | ------------------------ | ------------ | ---------------------------------------------------------------------------------------------------------- |
+| `PesterCodeCoverageEnabled`      | $true                    |              | When true, code coverage will be enabled for Pester tests.                                                 |
+| `PesterCodeCoverageOutputFormat` | "Cobertura"              |              | The output format for code coverage reports. Ref: https://pester.dev/docs/usage/configuration#codecoverage |
+| `PesterCodeCoverageOutputPath`   | "PesterCodeCoverage.xml" |              | The file path for the code coverage report.                                                                |
+| `PesterCodeCoveragePaths`        | @()                      |              | The path(s) to analyze for code coverage.                                                                  |
+| `PesterCodeCoverageThreshold`    | 75                       |              | The minimum code coverage percentage required to pass.                                                     |
+| `PesterExcludeTagFilter`         | @()                      |              | Tags to exclude when running Pester tests.                                                                 |
+| `PesterOutputFilePath`           | "PesterTestResults.xml"  |              | The file path for the Pester test results.                                                                 |
+| `PesterOutputFormat`             | "NUnitXml"               |              | The Pester output format.  Ref: https://pester.dev/docs/usage/configuration#testresult                     |
+| `PesterShowOptions`              | @()                      |              | *DEPRECATED* The Pester show options; use `PesterVerbosity` instead.                                       |
+| `PesterTagFilter`                | @()                      |              | Tags to include when running Pester tests.                                                                 |
+| `PesterTestsDir`                 | $null                    |              | The directory containing the Pester tests. Defaults to the current directory.                              |
+| `PesterVerbosity`                | $null                    |              | The verbosity level for Pester output.  Ref: https://pester.dev/docs/usage/configuration#output            |
+| `PesterVersion`                  | "5.7.1"                  |              | The version of Pester to use for testing.                                                                  |
+| `SkipPesterTests`                | $false                   |              | When true, all Pester tests will be skipped.                                                               |
 
 ### Tasks
 
-| Name             | Description                             |
-| ---------------- | --------------------------------------- |
-| `InstallPester`  | Installs the required version of Pester |
-| `RunPesterTests` | Runs all the available Pester tests     |
+| Name             | Description                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `InstallPester`  | Installs the required version of Pester                                                                                                           |
+| `RunPesterTests` | Runs all the available Pester tests using modern v5 configuration approach with support for code coverage, filtering, and multiple output formats |
 
 
 <!-- END_GENERATED_HELP -->
