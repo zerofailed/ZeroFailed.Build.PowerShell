@@ -130,10 +130,14 @@ task RunPesterTests `
 
     # Check code coverage threshold if enabled
     if ($PesterCodeCoverageEnabled -and $PesterCodeCoverageThreshold -gt 0 -and $results.CodeCoverage) {
-        $coveragePercent = [math]::Round(($results.CodeCoverage.CoveredPercent), 2)
-        if ($coveragePercent -lt $PesterCodeCoverageThreshold) {
+        $coveragePercent = [math]::Round(($results.CodeCoverage.CoveragePercent), 2)
+        if ($results.CodeCoverage.CommandsAnalyzedCount -eq 0) {
+            Write-Host ("No commands were found for coverage analysis - skipping threshold rule") -ForegroundColor Yellow
+        }
+        elseif ($coveragePercent -lt $PesterCodeCoverageThreshold) {
             throw ("Code coverage of {0}% is below the required threshold of {1}%" -f $coveragePercent, $PesterCodeCoverageThreshold)
-        } else {
+        }
+        else {
             Write-Host ("Code coverage: {0}% (meets threshold of {1}%)" -f $coveragePercent, $PesterCodeCoverageThreshold) -ForegroundColor Green
         }
     }
