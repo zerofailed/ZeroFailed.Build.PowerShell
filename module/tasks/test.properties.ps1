@@ -41,11 +41,5 @@ $PesterTagFilter = @()
 # Synopsis: Tags to exclude when running Pester tests.
 $PesterExcludeTagFilter = @()
 
-# Synopsis: Additional output formats for test results (array of formats).
-$PesterAdditionalOutputFormats = @()
-
-# Synopsis: Additional output paths corresponding to additional formats.
-$PesterAdditionalOutputPaths = @()
-
 # Synopsis: The verbosity level for Pester output.
 $PesterVerbosity = $null

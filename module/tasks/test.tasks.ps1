@@ -72,57 +72,6 @@ task RunPesterTests `
 
     $results = Invoke-Pester -Configuration $config
 
-    # Generate additional output formats if specified
-    if ($PesterAdditionalOutputFormats.Count -gt 0) {
-        $additionalFormats = $PesterAdditionalOutputFormats
-        $additionalPaths = $PesterAdditionalOutputPaths
-        
-        # If paths not specified or count mismatch, generate default paths
-        if ($additionalPaths.Count -ne $additionalFormats.Count) {
-            Write-Warning "Additional output paths count doesn't match formats count. Generating default paths."
-            $additionalPaths = @()
-            for ($i = 0; $i -lt $additionalFormats.Count; $i++) {
-                $format = $additionalFormats[$i]
-                $extension = switch ($format) {
-                    "JUnitXml" { "xml" }
-                    "NUnitXml" { "xml" }
-                    "NUnit2.5" { "xml" }
-                    "JaCoCo" { "xml" }
-                    default { "txt" }
-                }
-                $additionalPaths += "PesterResults.$format.$extension"
-            }
-        }
-        
-        # Generate each additional format
-        for ($i = 0; $i -lt $additionalFormats.Count; $i++) {
-            $format = $additionalFormats[$i]
-            $path = $additionalPaths[$i]
-            
-            Write-Host "Generating additional test results in $format format: $path" -ForegroundColor Cyan
-            
-            # Create a new configuration for this format
-            $additionalConfig = New-PesterConfiguration
-            $additionalConfig.Run.Path = $PesterTestsDir
-            $additionalConfig.Run.PassThru = $false
-            $additionalConfig.TestResult.Enabled = $true
-            $additionalConfig.TestResult.OutputFormat = $format
-            $additionalConfig.TestResult.OutputPath = $path
-            $additionalConfig.Output.Verbosity = 'None'
-            
-            # Apply same filters
-            if ($PesterTagFilter.Count -gt 0) {
-                $additionalConfig.Filter.Tag = $PesterTagFilter
-            }
-            if ($PesterExcludeTagFilter.Count -gt 0) {
-                $additionalConfig.Filter.ExcludeTag = $PesterExcludeTagFilter
-            }
-            
-            # Run tests again just for output format (this is efficient as discovery is cached)
-            Invoke-Pester -Configuration $additionalConfig | Out-Null
-        }
-    }
-
     # Check code coverage threshold if enabled
     if ($PesterCodeCoverageEnabled -and $PesterCodeCoverageThreshold -gt 0 -and $results.CodeCoverage) {
         $coveragePercent = [math]::Round(($results.CodeCoverage.CoveragePercent), 2)
