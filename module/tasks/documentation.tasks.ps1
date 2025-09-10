@@ -19,7 +19,7 @@ task EnsurePlatyPSModule -Before setupModules {
 
 # This scriptblock is used as a compensation task to ensure that if we are using
 # the 'flattened' output path option for Markdown files, then our special handling in
-# 'MoveMarkdownFilesForPlatyPS' gets reverted even if an error happens during
+# 'MoveMarkdownFilesBeforePlatyPS' gets reverted even if an error happens during
 # processing.
 $_moveMarkdownFilesToOutputPath = {
     foreach ($module in $PowerShellModulesToPublish) {
@@ -37,7 +37,7 @@ $_moveMarkdownFilesToOutputPath = {
 }
 
 # Synopsis: Ensures existing markdown files in the place that PlatyPS expects them when using a custom output path
-task MoveMarkdownFilesForPlatyPS -If { $PSMarkdownDocsFlattenOutputPath } {
+task MoveMarkdownFilesBeforePlatyPS -If { $PSMarkdownDocsFlattenOutputPath } {
 
     # Setup compensation task to ensure that these files get moved back if an error happens that
     # would otherwise prevent the later 'MoveMarkdownFilesToOutputPath' task from running.
@@ -57,11 +57,23 @@ task MoveMarkdownFilesForPlatyPS -If { $PSMarkdownDocsFlattenOutputPath } {
     }
 }
 
+task ReturnMarkdownFilesAfterPlatyPS `
+    -If { $PSMarkdownDocsFlattenOutputPath } `
+    -After GeneratePowerShellMarkdownDocumentation `
+    -Jobs {
+
+    # Call the compensation function to move the markdown files back to their original path
+    $_moveMarkdownFilesToOutputPath.Invoke()
+
+    # Disable the compensation function from running at the end of the build, since we know it's not needed now
+    $script:OnExitActions.Remove($_moveMarkdownFilesToOutputPath) | Out-Null
+}
+
 # Synopsis: Uses PlatyPS to generate/update existing markdown documentation
 task GeneratePowerShellMarkdownDocumentation `
     -If { !$SkipGenerateMarkdownDocumentation } `
     -After BuildCore `
-    -Jobs GitVersion,EnsurePlatyPSModule,MoveMarkdownFilesForPlatyPS,{
+    -Jobs GitVersion,EnsurePlatyPSModule,MoveMarkdownFilesBeforePlatyPS,{
 
     foreach ($module in $PowerShellModulesToPublish) {
 
