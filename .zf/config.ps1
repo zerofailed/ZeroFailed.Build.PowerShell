@@ -2,7 +2,7 @@
 $zerofailedExtensions = @(
     @{
         Name = "ZeroFailed.Build.PowerShell"
-        # It uses itself as a dependency, so we can use the current path
+        # It uses itself as a dependency, so we test the local repository version
         Path = "$here\module"
     }
 )
