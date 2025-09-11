@@ -8,8 +8,11 @@ $SkipGeneratePSMarkdownDocs = $false
 # Synopsis: The base output path for generated markdown files.
 $PSMarkdownDocsOutputPath = property ZF_BUILD_PS_MD_DOCS_OUTPUT_PATH './docs'
 
-# Synopsis: When true, overrides PlatyPS behaviour of placing markdown files in a sub-folder named after the module.
+# Synopsis: When true, works around default PlatyPS behaviour of placing markdown files in a sub-folder named after the module.
 $PSMarkdownDocsFlattenOutputPath = [Convert]::ToBoolean((property ZF_BUILD_PS_MD_DOCS_FLATTEN_OUTPUT_PATH $false))
 
 # Synopsis: When true, PlatyPS will generate a markdown index page for the module.
 $PSMarkdownDocsIncludeModulePage = $true
+
+# Synopsis: When true, failed markdown linting (e.g. to ensure no generated placeholder text) will break the build, otherwise treated as a warning.
+$PSMarkdownDocsRequireLinting = $true

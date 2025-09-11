@@ -59,7 +59,7 @@ task MoveMarkdownFilesBeforePlatyPS -If { $PSMarkdownDocsFlattenOutputPath } {
 
 task ReturnMarkdownFilesAfterPlatyPS `
     -If { $PSMarkdownDocsFlattenOutputPath } `
-    -After GeneratePowerShellMarkdownDocumentation `
+    -After GeneratePSMarkdownDocs `
     -Jobs {
 
     # Call the compensation function to move the markdown files back to their original path
@@ -70,8 +70,8 @@ task ReturnMarkdownFilesAfterPlatyPS `
 }
 
 # Synopsis: Uses PlatyPS to generate/update existing markdown documentation
-task GeneratePowerShellMarkdownDocumentation `
-    -If { !$SkipGenerateMarkdownDocumentation } `
+task GeneratePSMarkdownDocs `
+    -If { !$SkipGeneratePSMarkdownDocs } `
     -After BuildCore `
     -Jobs GitVersion,EnsurePlatyPSModule,MoveMarkdownFilesBeforePlatyPS,{
 
@@ -111,5 +111,30 @@ task GeneratePowerShellMarkdownDocumentation `
                 Write-Build White "Updated files:`n`t$($updatedFiles.Name -join "`n`t")"
             }
         }
+    }
+}
+
+# Synopsis: Runs linting against markdown documentation (e.g. to ensure no generated placeholder text)
+task RunPSMarkdownDocsLinting `
+    -If { !$SkipGeneratePSMarkdownDocs } `
+    -After GeneratePSMarkdownDocs `
+    -Jobs ReturnMarkdownFilesAfterPlatyPS,{
+
+    $noPlaceholderText = $true
+    Measure-PlatyPSMarkdown -Path $PSMarkdownDocsOutputPath\*.md |
+        Where-Object { $_.MarkdownContent.MarkdownLines -inotmatch '\"\{\{.*\}\}\"' } |
+        ForEach-Object {
+            Write-Build Red "[PlaceholdersDetected] File '$($_.FilePath.Replace("$here\",''))' contains generated documentation placeholders"
+            $noPlaceholderText = $false
+        }
+
+    if (!$noPlaceholderText -and $PSMarkdownDocsRequireLinting) {
+        throw "PowerShell markdown documentation linting failed - review previous errors"
+    }
+    elseif (!$noPlaceholderText) {
+        Write-Warning "PowerShell markdown documentation linting failed - warn-only mode)"
+    }
+    else {
+        Write-Build Green "PowerShell markdown documentation linting successful"
     }
 }
