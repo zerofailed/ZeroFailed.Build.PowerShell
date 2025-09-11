@@ -122,7 +122,7 @@ task RunPSMarkdownDocsLinting `
 
     $noPlaceholderText = $true
     Measure-PlatyPSMarkdown -Path $PSMarkdownDocsOutputPath\*.md |
-        Where-Object { $_.MarkdownContent.MarkdownLines -inotmatch '\"\{\{.*\}\}\"' } |
+        Where-Object { $_.MarkdownContent.MarkdownLines -imatch '\"\{\{.*\}\}\"' } |
         ForEach-Object {
             Write-Build Red "[PlaceholdersDetected] File '$($_.FilePath.Replace("$here\",''))' contains generated documentation placeholders"
             $noPlaceholderText = $false
