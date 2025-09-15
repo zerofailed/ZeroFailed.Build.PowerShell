@@ -2,6 +2,21 @@
 
 <!-- START_GENERATED_HELP -->
 
+## Documentation
+
+This group contains functionality for maintaining PowerShell module documentation.
+
+### Properties
+
+| Name                              | Default Value | ENV Override                              | Description                                                                                                                                     |
+| --------------------------------- | ------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SkipGeneratePSMarkdownDocs`      | $false        |                                           | When true, all markdown documentation will tasks will be skipped.                                                                               |
+| `PSMarkdownDocsOutputPath`        | './docs'      | `ZF_BUILD_PS_MD_DOCS_OUTPUT_PATH`         | The base output path for generated markdown files.                                                                                              |
+| `PSMarkdownDocsFlattenOutputPath` | $false        | `ZF_BUILD_PS_MD_DOCS_FLATTEN_OUTPUT_PATH` | When true, works around default PlatyPS behaviour of placing markdown files in a sub-folder named after the module.                             |
+| `PSMarkdownDocsIncludeModulePage` | $true         |                                           | When true, PlatyPS will generate a markdown index page for the module.                                                                          |
+| `PSMarkdownDocsRequireLinting`    | $true         |                                           | When true, failed markdown linting (e.g. to ensure no generated placeholder text) will break the build, otherwise they are treated as warnings. |
+
+
 ## Publish
 
 This group contains functionality for publishing PowerShell modules to repositories.

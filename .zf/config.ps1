@@ -2,7 +2,7 @@
 $zerofailedExtensions = @(
     @{
         Name = "ZeroFailed.Build.PowerShell"
-        # It uses itself as a dependency, so we can use the current path
+        # It uses itself as a dependency, so we test the local repository version
         Path = "$here\module"
     }
 )
@@ -13,6 +13,17 @@ $zerofailedExtensions = @(
 # Set the required build options
 $PesterTestsDir = "$here/module"
 $PesterCodeCoveragePaths = @("$here/module/functions")
+$PowerShellModulesToPublish = @(
+    @{
+        ModulePath = "$here/module/ZeroFailed.Build.PowerShell.psd1"
+        FunctionsToExport = @("*")
+        CmdletsToExport = @()
+        AliasesToExport = @()
+    }
+)
+$PSMarkdownDocsFlattenOutputPath = $true
+$PSMarkdownDocsOutputPath = './docs/functions'
+$PSMarkdownDocsIncludeModulePage = $false
 
 # Customise the build process
 task . FullBuild

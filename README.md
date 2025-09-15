@@ -29,6 +29,9 @@ kanban
     init
     version
     build
+        ensurePlatyPSModule[Install PlatyPS]
+        genMarkdownDocs[Generate Module Markdown Docs]
+        runMarkdownLinting[Run Markdown Docs Linting]
     test
         installPester[Install Pester]
         runPester[Run Pester]
