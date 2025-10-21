@@ -5,7 +5,7 @@
 . $PSScriptRoot/documentation.properties.ps1
 
 # Synopsis: Ensures the required PlatyPS module is available
-task EnsurePlatyPSModule -Before setupModules {
+task EnsurePlatyPSModule -If { !$SkipGeneratePSMarkdownDocs } -Before setupModules {
 
     if (!$RequiredPowerShellModules.ContainsKey('Microsoft.PowerShell.PlatyPS')) {
         $script:RequiredPowerShellModules += @{
@@ -14,6 +14,18 @@ task EnsurePlatyPSModule -Before setupModules {
                 repository = 'PSGallery'
             }
         }
+    }
+}
+
+# Synopsis: Ensures the markdown documentation output path exists
+task EnsurePSMarkdownDocsOutputPath -If { !$SkipGeneratePSMarkdownDocs } {
+
+    # Support dynamic evaluation of PSMarkdownDocsOutputPath
+    $script:PSMarkdownDocsOutputPath = Resolve-Value $PSMarkdownDocsOutputPath
+
+    if (!(Test-Path $PSMarkdownDocsOutputPath)) {
+        Write-Build White "Creating PS markdown documentation folder: $PSMarkdownDocsOutputPath"
+        New-Item -ItemType Directory $PSMarkdownDocsOutputPath -Force | Out-Null
     }
 }
 
@@ -37,7 +49,7 @@ $_moveMarkdownFilesToOutputPath = {
 }
 
 # Synopsis: Ensures existing markdown files in the place that PlatyPS expects them when using a custom output path
-task MoveMarkdownFilesBeforePlatyPS -If { $PSMarkdownDocsFlattenOutputPath } {
+task MoveMarkdownFilesBeforePlatyPS -If { $PSMarkdownDocsFlattenOutputPath } EnsurePSMarkdownDocsOutputPath,{
 
     # Setup compensation task to ensure that these files get moved back if an error happens that
     # would otherwise prevent the later 'MoveMarkdownFilesToOutputPath' task from running.
@@ -73,7 +85,7 @@ task ReturnMarkdownFilesAfterPlatyPS `
 task GeneratePSMarkdownDocs `
     -If { !$SkipGeneratePSMarkdownDocs } `
     -After BuildCore `
-    -Jobs GitVersion,EnsurePlatyPSModule,MoveMarkdownFilesBeforePlatyPS,{
+    -Jobs GitVersion,EnsurePlatyPSModule,EnsurePSMarkdownDocsOutputPath,MoveMarkdownFilesBeforePlatyPS,{
 
     foreach ($module in $PowerShellModulesToPublish) {
 
@@ -118,11 +130,11 @@ task GeneratePSMarkdownDocs `
 task RunPSMarkdownDocsLinting `
     -If { !$SkipGeneratePSMarkdownDocs } `
     -After GeneratePSMarkdownDocs `
-    -Jobs ReturnMarkdownFilesAfterPlatyPS,{
+    -Jobs EnsurePSMarkdownDocsOutputPath,ReturnMarkdownFilesAfterPlatyPS,{
 
     $noPlaceholderText = $true
     Measure-PlatyPSMarkdown -Path $PSMarkdownDocsOutputPath\*.md |
-        Where-Object { $_.MarkdownContent.MarkdownLines -imatch '\"\{\{.*\}\}\"' } |
+        Where-Object { $_.MarkdownContent.MarkdownLines -imatch '\{\{.*\}\}' } |
         ForEach-Object {
             Write-Build Red "[PlaceholdersDetected] File '$($_.FilePath.Replace("$here\",''))' contains generated documentation placeholders"
             $noPlaceholderText = $false
