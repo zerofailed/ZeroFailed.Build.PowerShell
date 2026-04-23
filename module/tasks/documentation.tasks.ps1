@@ -40,7 +40,8 @@ $_moveMarkdownFilesToOutputPath = {
         $outputPathExpectedByPlatyPS = Join-Path $PSMarkdownDocsOutputPath $moduleName
 
         # Handle the scenario where we had an error before anything actually got moved
-        if (Test-Path $outputPathExpectedByPlatyPS) {
+        if ((Test-Path $outputPathExpectedByPlatyPS) -and !$MarkdownFilesAlreadyMovedBack) {
+            Write-Build White 'Moving PlatyPS Markdown files to output path...'
             # Move the markdown files back to where we want them
             Move-Item -Path $outputPathExpectedByPlatyPS\*.md -Destination $PSMarkdownDocsOutputPath\
             Remove-Item $outputPathExpectedByPlatyPS
@@ -52,8 +53,9 @@ $_moveMarkdownFilesToOutputPath = {
 task MoveMarkdownFilesBeforePlatyPS -If { $PSMarkdownDocsFlattenOutputPath } EnsurePSMarkdownDocsOutputPath,{
 
     # Setup compensation task to ensure that these files get moved back if an error happens that
-    # would otherwise prevent the later 'MoveMarkdownFilesToOutputPath' task from running.
-    $script:OnExitActions.Add($_moveMarkdownFilesToOutputPath)
+    # would otherwise prevent the later 'ReturnMarkdownFilesAfterPlatyPS' task from running.
+    Register-OnExitAction -Action $_moveMarkdownFilesToOutputPath
+    $script:MarkdownFilesAlreadyMovedBack = $false
 
     # PlatyPS expects to find existing markdown files in a folder named after the module, but
     # this is not always desirable when a repo only contains a single module.  We need to temporarily
@@ -69,6 +71,7 @@ task MoveMarkdownFilesBeforePlatyPS -If { $PSMarkdownDocsFlattenOutputPath } Ens
     }
 }
 
+# Synopsis: A compensation task to ensure that if we are using the 'flattened' output path option for Markdown files, then our special handling in 'MoveMarkdownFilesBeforePlatyPS' gets reverted even if an error happens during processing
 task ReturnMarkdownFilesAfterPlatyPS `
     -If { $PSMarkdownDocsFlattenOutputPath } `
     -After GeneratePSMarkdownDocs `
@@ -77,8 +80,8 @@ task ReturnMarkdownFilesAfterPlatyPS `
     # Call the compensation function to move the markdown files back to their original path
     $_moveMarkdownFilesToOutputPath.Invoke()
 
-    # Disable the compensation function from running at the end of the build, since we know it's not needed now
-    $script:OnExitActions.Remove($_moveMarkdownFilesToOutputPath) | Out-Null
+    # Ensure this functionality doesn't run as part of the OnExitAction compensation, since we know it's not needed now
+    $script:MarkdownFilesAlreadyMovedBack = $true
 }
 
 # Synopsis: Uses PlatyPS to generate/update existing markdown documentation
