@@ -47,7 +47,7 @@ Describe "'$moduleName' Module Tests" {
             $functionTestsPath = $_.FullName.Replace('.ps1', '.Tests.ps1')
             $functionDir = $_.Directory.FullName
             $isPrivateFunction = $_.Name.StartsWith('_')
-            $markdownDocPath = Join-Path $here 'docs' 'functions' "$(Split-Path -LeafBase $_.Name).md"
+            $markdownDocPath = Join-Path $PSScriptRoot 'docs' 'functions' "$(Split-Path -LeafBase $_.Name).md"
         }
         
         It "<function> should exist" {
