@@ -17,6 +17,13 @@ This group contains functionality for maintaining PowerShell module documentatio
 | `PSMarkdownDocsLocale`            | 'en-US'       | `ZF_BUILD_PS_MD_DOCS_LOCALE`              | The locale written to the generated markdown frontmatter. Pinned so that the output does not vary with the culture of the build agent.          |
 | `PSMarkdownDocsRequireLinting`    | $true         |                                           | When true, failed markdown linting (e.g. to ensure no generated placeholder text) will break the build, otherwise they are treated as warnings. |
 
+### Tasks
+
+| Name                       | Description                                                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GeneratePSMarkdownDocs`   | Uses PlatyPS to generate the markdown help documentation from the module's comment-based help.                                                     |
+| `RunPSMarkdownDocsLinting` | Runs linting against markdown documentation (e.g. to ensure no generated placeholder text).                                                        |
+
 
 ## Publish
 
