@@ -48,7 +48,7 @@ function _Sync-GeneratedPSMarkdownDoc {
     $new = [System.Collections.Generic.List[string]]::new()
     $updated = [System.Collections.Generic.List[string]]::new()
 
-    foreach ($generatedFile in Get-ChildItem -Path $GeneratedPath -Filter *.md) {
+    foreach ($generatedFile in Get-ChildItem -Path $GeneratedPath -Filter *.md -ErrorAction SilentlyContinue) {
         $targetFile = Join-Path $TargetPath $generatedFile.Name
 
         if (!(Test-Path $targetFile)) {
