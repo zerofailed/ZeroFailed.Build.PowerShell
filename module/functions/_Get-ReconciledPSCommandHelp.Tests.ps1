@@ -1,4 +1,4 @@
-# <copyright file="documentation.tasks.Tests.ps1" company="Endjin Limited">
+# <copyright file="_Get-ReconciledPSCommandHelp.Tests.ps1" company="Endjin Limited">
 # Copyright (c) Endjin Limited. All rights reserved.
 # </copyright>
 
@@ -6,14 +6,9 @@
 $platyPSAvailable = [bool](Get-Module -ListAvailable Microsoft.PowerShell.PlatyPS)
 
 BeforeAll {
-    # Stub the InvokeBuild / ZeroFailed primitives the tasks file calls at load time, so it can
-    # be dot-sourced purely to pull in its helper functions.
-    function task { }
-    function property { param([string] $Name, $DefaultValue) $DefaultValue }
-    function Resolve-Value { param($Value) $Value }
-    function Write-Build { }
-
-    . (Join-Path $PSScriptRoot 'documentation.tasks.ps1')
+    . (Join-Path $PSScriptRoot '_ConvertTo-NormalisedPSMarkdownContent.ps1')
+    . (Join-Path $PSScriptRoot '_Get-ReconciledPSCommandHelp.ps1')
+    . (Join-Path $PSScriptRoot '_Sync-GeneratedPSMarkdownDoc.ps1')
 
     Import-Module Microsoft.PowerShell.PlatyPS -ErrorAction SilentlyContinue
 
@@ -62,8 +57,8 @@ function Get-FixtureThing {
         Join-Path $moduleDir 'Fixture.psd1'
     }
 
-    # Runs the generation the same way the task does: reconcile CommandHelp, export to a temp
-    # folder, then sync into the target.
+    # Runs the generation the same way the GeneratePSMarkdownDocs task does: reconcile
+    # CommandHelp, export to a temp folder, then sync into the target.
     function Invoke-FixtureDocGeneration {
         param(
             [string] $ManifestPath,
@@ -73,13 +68,13 @@ function Get-FixtureThing {
         Import-Module $ManifestPath -Force
         $moduleName = Split-Path -LeafBase $ManifestPath
 
-        $commandHelp = Get-ReconciledPSCommandHelp -ModuleName $moduleName -ExistingDocsPath $TargetPath
+        $commandHelp = _Get-ReconciledPSCommandHelp -ModuleName $moduleName -ExistingDocsPath $TargetPath
 
         $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("zf-psdocs-test-" + [Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $temp -Force | Out-Null
         try {
             $commandHelp | Export-MarkdownCommandHelp -OutputFolder $temp -Force | Out-Null
-            Sync-GeneratedPSMarkdownDoc -GeneratedPath (Join-Path $temp $moduleName) -TargetPath $TargetPath
+            _Sync-GeneratedPSMarkdownDoc -GeneratedPath (Join-Path $temp $moduleName) -TargetPath $TargetPath
         }
         finally {
             Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
@@ -87,75 +82,7 @@ function Get-FixtureThing {
     }
 }
 
-Describe 'documentation.tasks.ps1 helpers' {
-
-    Context 'ConvertTo-NormalisedPSMarkdownContent' {
-
-        It 'ignores differences in volatile frontmatter (ms.date)' {
-            $a = Join-Path $TestDrive 'a.md'
-            $b = Join-Path $TestDrive 'b.md'
-            Set-Content -LiteralPath $a -Value "---`nms.date: 01/01/2026`ntitle: Foo`n---`nbody"
-            Set-Content -LiteralPath $b -Value "---`nms.date: 09/10/2026`ntitle: Foo`n---`nbody"
-
-            (ConvertTo-NormalisedPSMarkdownContent -Path $a) |
-                Should -BeExactly (ConvertTo-NormalisedPSMarkdownContent -Path $b)
-        }
-
-        It 'still reflects real content differences' {
-            $a = Join-Path $TestDrive 'c.md'
-            $b = Join-Path $TestDrive 'd.md'
-            Set-Content -LiteralPath $a -Value "ms.date: 01/01/2026`nThe description."
-            Set-Content -LiteralPath $b -Value "ms.date: 01/01/2026`nThe description.`nThe description."
-
-            (ConvertTo-NormalisedPSMarkdownContent -Path $a) |
-                Should -Not -BeExactly (ConvertTo-NormalisedPSMarkdownContent -Path $b)
-        }
-    }
-
-    Context 'Sync-GeneratedPSMarkdownDoc' {
-
-        BeforeEach {
-            $script:generated = Join-Path $TestDrive ([Guid]::NewGuid().ToString('N') + '-gen')
-            $script:target = Join-Path $TestDrive ([Guid]::NewGuid().ToString('N') + '-target')
-            New-Item -ItemType Directory -Path $script:generated -Force | Out-Null
-        }
-
-        It 'copies files that do not yet exist in the target' {
-            Set-Content -LiteralPath (Join-Path $script:generated 'New-Thing.md') -Value "ms.date: 09/10/2026`nhelp"
-
-            $result = Sync-GeneratedPSMarkdownDoc -GeneratedPath $script:generated -TargetPath $script:target
-
-            $result.New | Should -Contain 'New-Thing.md'
-            Join-Path $script:target 'New-Thing.md' | Should -Exist
-        }
-
-        It 'does not rewrite a target that differs only by volatile frontmatter' {
-            New-Item -ItemType Directory -Path $script:target -Force | Out-Null
-            Set-Content -LiteralPath (Join-Path $script:target 'Get-Thing.md') -Value "ms.date: 01/01/2026`nhelp"
-            Set-Content -LiteralPath (Join-Path $script:generated 'Get-Thing.md') -Value "ms.date: 09/10/2026`nhelp"
-            $before = Get-Content -Raw -LiteralPath (Join-Path $script:target 'Get-Thing.md')
-
-            $result = Sync-GeneratedPSMarkdownDoc -GeneratedPath $script:generated -TargetPath $script:target
-
-            $result.New | Should -BeNullOrEmpty
-            $result.Updated | Should -BeNullOrEmpty
-            Get-Content -Raw -LiteralPath (Join-Path $script:target 'Get-Thing.md') | Should -BeExactly $before
-        }
-
-        It 'overwrites a target whose help content has drifted' {
-            New-Item -ItemType Directory -Path $script:target -Force | Out-Null
-            Set-Content -LiteralPath (Join-Path $script:target 'Get-Thing.md') -Value "ms.date: 09/10/2026`nhelp`nhelp (duplicated)"
-            Set-Content -LiteralPath (Join-Path $script:generated 'Get-Thing.md') -Value "ms.date: 09/10/2026`nhelp"
-
-            $result = Sync-GeneratedPSMarkdownDoc -GeneratedPath $script:generated -TargetPath $script:target
-
-            $result.Updated | Should -Contain 'Get-Thing.md'
-            Get-Content -Raw -LiteralPath (Join-Path $script:target 'Get-Thing.md') | Should -Not -Match 'duplicated'
-        }
-    }
-}
-
-Describe 'GeneratePSMarkdownDocs generation' -Skip:(-not $platyPSAvailable) {
+Describe '_Get-ReconciledPSCommandHelp' -Skip:(-not $platyPSAvailable) {
 
     BeforeEach {
         $script:manifest = New-FixtureModule -Root (Join-Path $TestDrive ([Guid]::NewGuid().ToString('N')))

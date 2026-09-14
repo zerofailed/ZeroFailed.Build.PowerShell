@@ -14,6 +14,7 @@ Describe "'$moduleName' Module Tests" {
     }
     
     BeforeAll {
+        $here = Split-Path -Parent $PSCommandPath
         $moduleName = Split-Path -Leaf $PSCommandPath.Replace('.module.tests.ps1', '')
     }
     
