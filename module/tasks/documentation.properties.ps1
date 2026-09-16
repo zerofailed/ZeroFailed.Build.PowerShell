@@ -14,5 +14,8 @@ $PSMarkdownDocsFlattenOutputPath = [Convert]::ToBoolean((property ZF_BUILD_PS_MD
 # Synopsis: When true, PlatyPS will generate a markdown index page for the module.
 $PSMarkdownDocsIncludeModulePage = $true
 
+# Synopsis: The locale written to the generated markdown frontmatter. Pinned so that the output does not vary with the culture of the build agent.
+$PSMarkdownDocsLocale = property ZF_BUILD_PS_MD_DOCS_LOCALE 'en-US'
+
 # Synopsis: When true, failed markdown linting (e.g. to ensure no generated placeholder text) will break the build, otherwise treated as a warning.
 $PSMarkdownDocsRequireLinting = $true
