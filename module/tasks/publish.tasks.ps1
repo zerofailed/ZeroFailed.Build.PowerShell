@@ -22,7 +22,14 @@ task PublishPowerShellModules `
         $manifest = Get-Content -Raw $module.ModulePath | Invoke-Expression
         $manifest.RequiredModules |
             Where-Object { $_ } |
-            ForEach-Object { Install-Module -Name $_ -Scope CurrentUser -Force -Repository PSGallery }
+            ForEach-Object {
+                if ($_ -is [hashtable]) {
+                    Install-Module -Name $_['ModuleName'] -RequiredVersion $_['RequiredVersion'] -Scope CurrentUser -Force -Repository PSGallery
+                }
+                else {
+                    Install-Module -Name $_ -Scope CurrentUser -Force -Repository PSGallery
+                }
+            }
 
         Update-ModuleManifest -Path $module.ModulePath `
                               -ModuleVersion $script:GitVersion.MajorMinorPatch `
