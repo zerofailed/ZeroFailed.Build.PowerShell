@@ -61,23 +61,25 @@ Each module in `PowerShellModulesToPublish` is published to every repository in 
 
 Each entry is a hashtable with these keys:
 
-| Key               | Required | Description                                                                                                       |
-| ----------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
-| `Name`            | yes      | The name of the PowerShell repository.                                                                            |
-| `ApiKey`          | no       | The API key to use when publishing.                                                                               |
-| `SourceLocation`  | no       | The repository's source URI. When set, the repository is registered (as trusted) if it is not registered already. |
-| `PublishLocation` | no       | The repository's publish URI. Defaults to `SourceLocation`.                                                       |
-| `Credential`      | no       | A `PSCredential` used to register the repository and to publish to it.                                            |
+| Key                       | Required | Description                                                                                                                  |
+| ------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Name`                    | yes      | The name of the PowerShell repository.                                                                                       |
+| `ApiKey`                  | no       | The API key to use when publishing.                                                                                          |
+| `SourceLocation`          | no       | The repository's source URI. When set, the repository is registered (as trusted) if it is not registered already.            |
+| `PublishLocation`         | no       | The repository's publish URI. Defaults to `SourceLocation`.                                                                  |
+| `Credential`              | no       | A `PSCredential` used to register the repository and to publish to it.                                                       |
+| `BlockPreReleaseVersions` | no       | When `$true`, pre-release versions are not published to this repository (it is not registered either). Defaults to `$false`. |
 
 Any value can be a scriptblock. Scriptblocks are evaluated when the publish task runs, so secrets are only read when they are needed.
 
-The example below publishes to PSGallery and to GitHub Packages:
+The example below publishes every version to GitHub Packages, and only stable versions to PSGallery:
 
 ```powershell
 $PowerShellRepositories = @(
     @{
         Name = 'PSGallery'
         ApiKey = { $PSRepositoryApiKey }
+        BlockPreReleaseVersions = $true
     }
     @{
         Name = 'GitHubPackages'

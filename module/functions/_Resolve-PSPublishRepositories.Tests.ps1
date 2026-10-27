@@ -75,6 +75,24 @@ Describe '_Resolve-PSPublishRepositories' {
         $result[0].PublishLocation | Should -Be 'https://feed/publish'
     }
 
+    It 'defaults BlockPreReleaseVersions to false' {
+        $result = _Resolve-PSPublishRepositories -Repositories @(@{ Name = 'Feed' })
+
+        $result[0].BlockPreReleaseVersions | Should -BeFalse
+    }
+
+    It 'resolves BlockPreReleaseVersions, including from a scriptblock' {
+        $repos = @(
+            @{ Name = 'Literal'; BlockPreReleaseVersions = $true }
+            @{ Name = 'Lazy'; BlockPreReleaseVersions = { $true } }
+        )
+
+        $result = _Resolve-PSPublishRepositories -Repositories $repos
+
+        $result[0].BlockPreReleaseVersions | Should -BeTrue
+        $result[1].BlockPreReleaseVersions | Should -BeTrue
+    }
+
     It 'throws when an entry has no name' {
         { _Resolve-PSPublishRepositories -Repositories @(@{ ApiKey = 'key' }) } |
             Should -Throw "*must specify a 'Name'*"

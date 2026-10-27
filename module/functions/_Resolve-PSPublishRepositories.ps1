@@ -14,10 +14,11 @@ function _Resolve-PSPublishRepositories {
 
             Any value supplied as a scriptblock is evaluated (via Resolve-Value), allowing secrets to be
             resolved lazily at publish time. 'PublishLocation' defaults to 'SourceLocation' when omitted.
+            'BlockPreReleaseVersions' is normalised to a boolean, defaulting to false.
 
         .PARAMETER Repositories
             The repository configuration, as an array of hashtables with the keys 'Name' (required),
-            'ApiKey', 'SourceLocation', 'PublishLocation' and 'Credential'.
+            'ApiKey', 'SourceLocation', 'PublishLocation', 'Credential' and 'BlockPreReleaseVersions'.
 
         .PARAMETER DefaultRepository
             The repository name used when no repositories are configured.
@@ -78,6 +79,7 @@ function _Resolve-PSPublishRepositories {
             SourceLocation = $sourceLocation
             PublishLocation = $publishLocation
             Credential = Resolve-Value $repo.Credential
+            BlockPreReleaseVersions = [bool](Resolve-Value $repo.BlockPreReleaseVersions)
         }
     }
 
