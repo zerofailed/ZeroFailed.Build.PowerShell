@@ -25,6 +25,7 @@ $PowerShellRepositories = @(
     @{
         Name = 'PSGallery'
         ApiKey = { $PSRepositoryApiKey }
+        BlockPreReleaseVersions = $true
     }
     @{
         Name = 'GitHubPackages'
