@@ -4,7 +4,7 @@
 
 . $PSScriptRoot/publish.properties.ps1
 
-# Synopsis: Publishes PowerShell Modules to a registered PowerShell Repository (e.g. PSGallery)
+# Synopsis: Publishes PowerShell Modules to one or more PowerShell Repositories (e.g. PSGallery, GitHub Packages)
 task PublishPowerShellModules `
     -If { !$SkipPowerShellPublish } `
     -After PublishCore `
@@ -13,7 +13,17 @@ task PublishPowerShellModules `
     # A nominal attempt to make a NuGet-compatible pre-release tag compatible with the
     # additional restrictions enforced by PowerShell Gallery
     $safePreReleaseTag = $env:GITVERSION_NuGetPreReleaseTag -replace "-",""
-    
+
+    $repositories = _Resolve-PSPublishRepositories -Repositories $PowerShellRepositories `
+                                                   -DefaultRepository $PowerShellRepository `
+                                                   -DefaultApiKey $PSRepositoryApiKey
+    foreach ($repo in $repositories) {
+        _Register-PSRepositoryIfMissing -Name $repo.Name `
+                                        -SourceLocation $repo.SourceLocation `
+                                        -PublishLocation $repo.PublishLocation `
+                                        -Credential $repo.Credential
+    }
+
     foreach ($module in $PowerShellModulesToPublish) {
 
         Write-Build White "Publishing module: $($module.ModulePath)"
@@ -38,11 +48,21 @@ task PublishPowerShellModules `
                               -CmdletsToExport $module.CmdletsToExport `
                               -AliasesToExport $module.AliasesToExport
         
-        Publish-Module -Name $module.ModulePath `
-                       -Repository $PowerShellRepository `
-                       -NuGetApiKey $PSRepositoryApiKey `
-                       -AllowPrerelease:$(![string]::IsNullOrEmpty($script:GitVersion.NuGetPreReleaseTag)) `
-                       -Force:$EnablePowerShellModuleForcePublish `
-                       -Verbose
+        foreach ($repo in $repositories) {
+            Write-Build White "Publishing to repository: $($repo.Name)"
+
+            $publishArgs = @{}
+            if ($repo.Credential) {
+                $publishArgs.Credential = $repo.Credential
+            }
+
+            Publish-Module -Name $module.ModulePath `
+                           -Repository $repo.Name `
+                           -NuGetApiKey $repo.ApiKey `
+                           -AllowPrerelease:$(![string]::IsNullOrEmpty($script:GitVersion.NuGetPreReleaseTag)) `
+                           -Force:$EnablePowerShellModuleForcePublish `
+                           -Verbose `
+                           @publishArgs
         }
+    }
 }
