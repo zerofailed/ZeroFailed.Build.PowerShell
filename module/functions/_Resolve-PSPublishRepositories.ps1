@@ -16,6 +16,9 @@ function _Resolve-PSPublishRepositories {
             resolved lazily at publish time. 'PublishLocation' defaults to 'SourceLocation' when omitted.
             'BlockPreReleaseVersions' is normalised to a boolean, defaulting to false.
 
+            When 'PreRelease' is set, repositories that block pre-release versions are omitted. They are
+            filtered out before their other values are evaluated, so their secrets are never read.
+
         .PARAMETER Repositories
             The repository configuration, as an array of hashtables with the keys 'Name' (required),
             'ApiKey', 'SourceLocation', 'PublishLocation', 'Credential' and 'BlockPreReleaseVersions'.
@@ -25,6 +28,9 @@ function _Resolve-PSPublishRepositories {
 
         .PARAMETER DefaultApiKey
             The API key used when no repositories are configured.
+
+        .PARAMETER PreRelease
+            When set, repositories with 'BlockPreReleaseVersions' enabled are omitted from the result.
 
         .INPUTS
             None. You can't pipe objects to _Resolve-PSPublishRepositories.
@@ -49,7 +55,10 @@ function _Resolve-PSPublishRepositories {
         [Parameter()]
         [AllowNull()]
         [AllowEmptyString()]
-        $DefaultApiKey
+        $DefaultApiKey,
+
+        [Parameter()]
+        [switch] $PreRelease
     )
 
     if (!$Repositories -or $Repositories.Count -eq 0) {
@@ -67,6 +76,13 @@ function _Resolve-PSPublishRepositories {
             throw "Each entry in 'PowerShellRepositories' must specify a 'Name'."
         }
 
+        # Filter before resolving anything else, so secrets for skipped repositories are never read
+        $blockPreReleaseVersions = [bool](Resolve-Value $repo.BlockPreReleaseVersions)
+        if ($PreRelease -and $blockPreReleaseVersions) {
+            Write-Host "Skipping repository '$name' for pre-release version"
+            continue
+        }
+
         $sourceLocation = Resolve-Value $repo.SourceLocation
         $publishLocation = Resolve-Value $repo.PublishLocation
         if ([string]::IsNullOrEmpty($publishLocation)) {
@@ -79,7 +95,7 @@ function _Resolve-PSPublishRepositories {
             SourceLocation = $sourceLocation
             PublishLocation = $publishLocation
             Credential = Resolve-Value $repo.Credential
-            BlockPreReleaseVersions = [bool](Resolve-Value $repo.BlockPreReleaseVersions)
+            BlockPreReleaseVersions = $blockPreReleaseVersions
         }
     }
 

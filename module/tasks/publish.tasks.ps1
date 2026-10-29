@@ -15,18 +15,10 @@ task PublishPowerShellModules `
     $safePreReleaseTag = $env:GITVERSION_NuGetPreReleaseTag -replace "-",""
     $isPreRelease = ![string]::IsNullOrEmpty($script:GitVersion.NuGetPreReleaseTag)
 
-    # Assigned before filtering, as the function emits the array as a single pipeline object
-    $resolvedRepositories = _Resolve-PSPublishRepositories -Repositories $PowerShellRepositories `
-                                                           -DefaultRepository $PowerShellRepository `
-                                                           -DefaultApiKey $PSRepositoryApiKey
-    $repositories = $resolvedRepositories |
-                        Where-Object {
-                            if ($isPreRelease -and $_.BlockPreReleaseVersions) {
-                                Write-Build White "Skipping repository '$($_.Name)' for pre-release version: $($script:GitVersion.SemVer)"
-                                return $false
-                            }
-                            $true
-                        }
+    $repositories = _Resolve-PSPublishRepositories -Repositories $PowerShellRepositories `
+                                                   -DefaultRepository $PowerShellRepository `
+                                                   -DefaultApiKey $PSRepositoryApiKey `
+                                                   -PreRelease:$isPreRelease
 
     if (!$repositories) {
         Write-Build White "No PowerShell repositories to publish to"

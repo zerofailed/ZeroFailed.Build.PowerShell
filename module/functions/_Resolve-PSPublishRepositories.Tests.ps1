@@ -93,6 +93,52 @@ Describe '_Resolve-PSPublishRepositories' {
         $result[1].BlockPreReleaseVersions | Should -BeTrue
     }
 
+    It 'keeps repositories that block pre-release versions when PreRelease is not set' {
+        $repos = @(
+            @{ Name = 'Stable'; BlockPreReleaseVersions = $true }
+            @{ Name = 'Any' }
+        )
+
+        $result = _Resolve-PSPublishRepositories -Repositories $repos
+
+        $result.Name | Should -Be @('Stable', 'Any')
+    }
+
+    It 'omits repositories that block pre-release versions when PreRelease is set' {
+        $repos = @(
+            @{ Name = 'Stable'; BlockPreReleaseVersions = $true }
+            @{ Name = 'Any' }
+        )
+
+        $result = _Resolve-PSPublishRepositories -Repositories $repos -PreRelease
+
+        $result.Count | Should -Be 1
+        $result[0].Name | Should -Be 'Any'
+    }
+
+    It 'does not evaluate secrets for repositories omitted by PreRelease' {
+        $repos = @(
+            @{
+                Name = 'Stable'
+                BlockPreReleaseVersions = $true
+                ApiKey = { throw 'ApiKey should not be evaluated' }
+                Credential = { throw 'Credential should not be evaluated' }
+            }
+            @{ Name = 'Any'; ApiKey = 'key' }
+        )
+
+        $result = _Resolve-PSPublishRepositories -Repositories $repos -PreRelease
+
+        $result.Count | Should -Be 1
+        $result[0].ApiKey | Should -Be 'key'
+    }
+
+    It 'returns an empty array when every repository is omitted' {
+        $result = _Resolve-PSPublishRepositories -Repositories @(@{ Name = 'Stable'; BlockPreReleaseVersions = $true }) -PreRelease
+
+        $result.Count | Should -Be 0
+    }
+
     It 'throws when an entry has no name' {
         { _Resolve-PSPublishRepositories -Repositories @(@{ ApiKey = 'key' }) } |
             Should -Throw "*must specify a 'Name'*"
