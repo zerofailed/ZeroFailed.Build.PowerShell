@@ -4,7 +4,7 @@
 
 . $PSScriptRoot/publish.properties.ps1
 
-# Synopsis: Publishes PowerShell Modules to a registered PowerShell Repository (e.g. PSGallery)
+# Synopsis: Publishes PowerShell Modules to one or more PowerShell Repositories (e.g. PSGallery, GitHub Packages)
 task PublishPowerShellModules `
     -If { !$SkipPowerShellPublish } `
     -After PublishCore `
@@ -13,7 +13,25 @@ task PublishPowerShellModules `
     # A nominal attempt to make a NuGet-compatible pre-release tag compatible with the
     # additional restrictions enforced by PowerShell Gallery
     $safePreReleaseTag = $env:GITVERSION_NuGetPreReleaseTag -replace "-",""
-    
+    $isPreRelease = ![string]::IsNullOrEmpty($script:GitVersion.NuGetPreReleaseTag)
+
+    $repositories = _Resolve-PSPublishRepositories -Repositories $PowerShellRepositories `
+                                                   -DefaultRepository $PowerShellRepository `
+                                                   -DefaultApiKey $PSRepositoryApiKey `
+                                                   -PreRelease:$isPreRelease
+
+    if (!$repositories) {
+        Write-Build White "No PowerShell repositories to publish to"
+        return
+    }
+
+    foreach ($repo in $repositories) {
+        _Register-PSRepositoryIfMissing -Name $repo.Name `
+                                        -SourceLocation $repo.SourceLocation `
+                                        -PublishLocation $repo.PublishLocation `
+                                        -Credential $repo.Credential
+    }
+
     foreach ($module in $PowerShellModulesToPublish) {
 
         Write-Build White "Publishing module: $($module.ModulePath)"
@@ -38,11 +56,21 @@ task PublishPowerShellModules `
                               -CmdletsToExport $module.CmdletsToExport `
                               -AliasesToExport $module.AliasesToExport
         
-        Publish-Module -Name $module.ModulePath `
-                       -Repository $PowerShellRepository `
-                       -NuGetApiKey $PSRepositoryApiKey `
-                       -AllowPrerelease:$(![string]::IsNullOrEmpty($script:GitVersion.NuGetPreReleaseTag)) `
-                       -Force:$EnablePowerShellModuleForcePublish `
-                       -Verbose
+        foreach ($repo in $repositories) {
+            Write-Build White "Publishing to repository: $($repo.Name)"
+
+            $publishArgs = @{}
+            if ($repo.Credential) {
+                $publishArgs.Credential = $repo.Credential
+            }
+
+            Publish-Module -Name $module.ModulePath `
+                           -Repository $repo.Name `
+                           -NuGetApiKey $repo.ApiKey `
+                           -AllowPrerelease:$isPreRelease `
+                           -Force:$EnablePowerShellModuleForcePublish `
+                           -Verbose `
+                           @publishArgs
         }
+    }
 }

@@ -35,8 +35,9 @@ This group contains functionality for publishing PowerShell modules to repositor
 | ------------------------------------ | ------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EnablePowerShellModuleForcePublish` | $false        |                                 | When true, the PowerShell module will be published even if the version already exists in the repository.                                                               |
 | `PowerShellModulesToPublish`         | @()           |                                 | Configures the PowerShell modules to be published to a PowerShell repository (e.g. PSGallery). See [note below](#powershellmodulestopublish) for configuration syntax. |
-| `PowerShellRepository`               | "PSGallery"   |                                 | The name of the PowerShell repository to publish to.                                                                                                                   |
-| `PSRepositoryApiKey`                 | ""            | `ZF_BUILD_PS_REPOSITORY_APIKEY` | The API key to use when publishing to the PowerShell repository.                                                                                                       |
+| `PowerShellRepositories`             | @()           |                                 | The PowerShell repositories to publish to (e.g. PSGallery and GitHub Packages). See [note below](#powershellrepositories) for configuration syntax.                     |
+| `PowerShellRepository`               | "PSGallery"   |                                 | The name of the PowerShell repository to publish to. Only used when `PowerShellRepositories` is empty.                                                                 |
+| `PSRepositoryApiKey`                 | ""            | `ZF_BUILD_PS_REPOSITORY_APIKEY` | The API key to use when publishing to the PowerShell repository. Only used when `PowerShellRepositories` is empty.                                                     |
 | `SkipPowerShellPublish`              | $false        |                                 | When true, publishing any PowerShell modules will be skipped.                                                                                                          |
 
 #### PowerShellModulesToPublish
@@ -54,11 +55,48 @@ $PowerShellModulesToPublish = @(
 )
 ```
 
+#### PowerShellRepositories
+
+Each module in `PowerShellModulesToPublish` is published to every repository in this list. When the list is empty, the module is published to the single repository named by `PowerShellRepository`, using `PSRepositoryApiKey`.
+
+Each entry is a hashtable with these keys:
+
+| Key                       | Required | Description                                                                                                                  |
+| ------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Name`                    | yes      | The name of the PowerShell repository.                                                                                       |
+| `ApiKey`                  | no       | The API key to use when publishing.                                                                                          |
+| `SourceLocation`          | no       | The repository's source URI. When set, the repository is registered (as trusted) if it is not registered already.            |
+| `PublishLocation`         | no       | The repository's publish URI. Defaults to `SourceLocation`.                                                                  |
+| `Credential`              | no       | A `PSCredential` used to register the repository and to publish to it.                                                       |
+| `BlockPreReleaseVersions` | no       | When `$true`, pre-release versions are not published to this repository (it is not registered either). Defaults to `$false`. |
+
+Any value can be a scriptblock. Scriptblocks are evaluated when the publish task runs, so secrets are only read when they are needed.
+
+The example below publishes every version to GitHub Packages, and only stable versions to PSGallery:
+
+```powershell
+$PowerShellRepositories = @(
+    @{
+        Name = 'PSGallery'
+        ApiKey = { $PSRepositoryApiKey }
+        BlockPreReleaseVersions = $true
+    }
+    @{
+        Name = 'GitHubPackages'
+        SourceLocation = 'https://nuget.pkg.github.com/<owner>/index.json'
+        ApiKey = { $env:ZF_BUILD_GITHUB_PACKAGES_TOKEN }
+        Credential = {
+            [pscredential]::new('github-actions', (ConvertTo-SecureString $env:ZF_BUILD_GITHUB_PACKAGES_TOKEN -AsPlainText -Force))
+        }
+    }
+)
+```
+
 ### Tasks
 
-| Name                       | Description                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| `PublishPowerShellModules` | Publishes PowerShell Modules to a registered PowerShell Repository (e.g. PSGallery) |
+| Name                       | Description                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `PublishPowerShellModules` | Publishes PowerShell Modules to one or more PowerShell Repositories (e.g. PSGallery, GitHub Packages) |
 
 ## Test
 

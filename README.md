@@ -20,7 +20,7 @@ For more information about the different component types, please refer to the [Z
 This extension consists of the following feature groups, refer to the [HELP page](./HELP.md) for more details.
 
 - Testing using `Pester`
-- Publishing modules to PowerShell repositories (e.g. PSGallery)
+- Publishing modules to one or more PowerShell repositories (e.g. PSGallery and GitHub Packages)
 
 The diagram below shows the discrete features and when they run as part of the default build process provided by [ZeroFailed.Build.Common](https://github.com/zerofailed/ZeroFailed.Build.Common).
 
@@ -38,7 +38,7 @@ kanban
     analysis
     package
     publish
-        publishModule[Publish to PS Gallery]
+        publishModule[Publish to PS Repositories]
 ```
 
 ## Pre-Requisites
