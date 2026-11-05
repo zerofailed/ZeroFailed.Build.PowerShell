@@ -55,22 +55,17 @@ task PublishPowerShellModules `
                               -FunctionsToExport $module.FunctionsToExport `
                               -CmdletsToExport $module.CmdletsToExport `
                               -AliasesToExport $module.AliasesToExport
-        
-        foreach ($repo in $repositories) {
-            Write-Build White "Publishing to repository: $($repo.Name)"
 
-            $publishArgs = @{}
-            if ($repo.Credential) {
-                $publishArgs.Credential = $repo.Credential
-            }
-
-            Publish-Module -Name $module.ModulePath `
-                           -Repository $repo.Name `
-                           -NuGetApiKey $repo.ApiKey `
-                           -AllowPrerelease:$isPreRelease `
-                           -Force:$EnablePowerShellModuleForcePublish `
-                           -Verbose `
-                           @publishArgs
+        $moduleVersion = $script:GitVersion.MajorMinorPatch
+        if ($safePreReleaseTag) {
+            $moduleVersion += "-$safePreReleaseTag"
         }
+
+        _Publish-PSModuleToRepositories -ModulePath $module.ModulePath `
+                                        -Version $moduleVersion `
+                                        -Repositories $repositories `
+                                        -AllowPrerelease:$isPreRelease `
+                                        -Force:$EnablePowerShellModuleForcePublish `
+                                        -SkipDuplicates:$PowerShellModulePublishSkipDuplicates
     }
 }
