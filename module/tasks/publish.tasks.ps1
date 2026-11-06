@@ -63,8 +63,10 @@ task PublishPowerShellModules `
         if ($safePreReleaseTag) {
             $manifestArgs.Prerelease = $safePreReleaseTag
         }
-        # Update-PSModuleManifest fails when the manifest has an empty PSData entry (e.g. "ExternalModuleDependencies = @()")
-        _Remove-EmptyPSDataManifestEntries -Path $module.ModulePath
+        # Update-PSModuleManifest fails when the manifest has no PSData section, or an empty PSData entry
+        # (e.g. "ExternalModuleDependencies = @()"). It also keeps an existing pre-release label when it is not
+        # given one, so remove that label for a stable build.
+        _Repair-PSDataManifestSection -Path $module.ModulePath -RemovePrerelease:(!$safePreReleaseTag)
         Update-PSModuleManifest @manifestArgs
 
         $moduleVersion = $script:GitVersion.MajorMinorPatch

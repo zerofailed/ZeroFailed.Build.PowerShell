@@ -49,6 +49,12 @@ function _Register-PSRepositoryIfMissing {
         [string] $PublishLocation
     )
 
+    # Check this before the repository is looked up, so that the warning is also written for a repository
+    # that is already registered (e.g. PSGallery, or one registered by an earlier build)
+    if (![string]::IsNullOrEmpty($PublishLocation) -and $PublishLocation -ne $SourceLocation) {
+        Write-Warning "The 'PublishLocation' of the PowerShell repository '$Name' is not used: PSResourceGet publishes to the repository's URI"
+    }
+
     if (Get-PSResourceRepository -Name $Name -ErrorAction SilentlyContinue) {
         Write-Verbose "PowerShell repository '$Name' is already registered"
         return
@@ -56,10 +62,6 @@ function _Register-PSRepositoryIfMissing {
 
     if ([string]::IsNullOrEmpty($SourceLocation)) {
         throw "The PowerShell repository '$Name' is not registered with PSResourceGet and no 'SourceLocation' was specified to register it."
-    }
-
-    if (![string]::IsNullOrEmpty($PublishLocation) -and $PublishLocation -ne $SourceLocation) {
-        Write-Warning "The 'PublishLocation' of the PowerShell repository '$Name' is not used: PSResourceGet publishes to the 'SourceLocation' ($SourceLocation)"
     }
 
     Write-Verbose "Registering PowerShell repository '$Name' ($SourceLocation)"

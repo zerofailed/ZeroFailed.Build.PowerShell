@@ -51,6 +51,15 @@ Describe '_Register-PSRepositoryIfMissing' {
         Should -Invoke Register-PSResourceRepository -Times 1 -Exactly -ParameterFilter { $Uri -eq 'https://feed/index.json' }
     }
 
+    It 'warns that a different PublishLocation is not used, when the repository is already registered' {
+        Mock Get-PSResourceRepository { [pscustomobject]@{ Name = 'PSGallery' } }
+
+        _Register-PSRepositoryIfMissing -Name 'PSGallery' -SourceLocation 'https://www.powershellgallery.com/api/v2' -PublishLocation 'https://www.powershellgallery.com/api/v2/package/'
+
+        Should -Invoke Write-Warning -Times 1 -Exactly -ParameterFilter { $Message -like "*'PublishLocation'*'PSGallery'*not used*" }
+        Should -Invoke Register-PSResourceRepository -Times 0 -Exactly
+    }
+
     It 'throws when the repository is missing and no SourceLocation is given' {
         Mock Get-PSResourceRepository {}
 

@@ -97,7 +97,7 @@ $PowerShellRepositories = @(
 
 #### Required modules
 
-Before a module is published to a repository, each module in its manifest's `RequiredModules` must exist in that repository, so that the published module can be installed from it. When a required module is missing, publishing to that repository fails. Modules listed in the manifest's `PrivateData.PSData.ExternalModuleDependencies` are not checked, because they are installed from somewhere else.
+Before a module is published to a repository, each module in its manifest's `RequiredModules` must exist in that repository, so that the published module can be installed from it. When a required module is missing, publishing to that repository fails. Modules listed in the manifest's `PrivateData.PSData.ExternalModuleDependencies` are not checked, because they are installed from somewhere else. When a pre-release version is published, a pre-release version of a required module also counts.
 
 PSResourceGet cannot publish a module whose `RequiredModules` has a wildcard `MaximumVersion` (e.g. `'5.*'`). When a manifest has one, publishing fails before any repository is published to. Use an explicit maximum version instead (e.g. `'5.99999999'` instead of `'5.*'`), or remove `MaximumVersion`.
 

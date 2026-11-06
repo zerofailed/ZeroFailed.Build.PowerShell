@@ -97,6 +97,17 @@ Describe '_Publish-PSModuleToRepositories' {
             Should -Invoke Publish-PSResource -Times 2 -Exactly
         }
 
+        It 'looks for pre-release versions of the required modules only when <Name>' -ForEach @(
+            @{ Name = 'publishing a pre-release'; AllowPrerelease = $true }
+            @{ Name = 'not publishing a pre-release'; AllowPrerelease = $false }
+        ) {
+            Mock Find-PSResource { [pscustomobject]@{ Name = $Name } }
+
+            _Publish-PSModuleToRepositories -ModulePath $depsModulePath -Version '1.2.3' -Repositories $repos[0] -AllowPrerelease:$AllowPrerelease
+
+            Should -Invoke Find-PSResource -Times 2 -Exactly -ParameterFilter { $Name -in 'Simple', 'Ranged' -and [bool]$Prerelease -eq $AllowPrerelease }
+        }
+
         It 'fails a repository that is missing a required module, and still publishes to the others' {
             Mock Find-PSResource { [pscustomobject]@{ Name = $Name } }
             Mock Find-PSResource {} -ParameterFilter { $Name -eq 'Ranged' -and $Repository -eq 'GitHubPackages' }

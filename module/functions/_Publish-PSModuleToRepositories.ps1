@@ -40,7 +40,8 @@ function _Publish-PSModuleToRepositories {
             uses the keys 'Name', 'ApiKey' and 'Credential'.
 
         .PARAMETER AllowPrerelease
-            Passed to Find-PSResource as 'Prerelease', so that the duplicate check can find a pre-release version.
+            Passed to Find-PSResource as 'Prerelease', so that the duplicate check can find a pre-release version,
+            and the required modules check can find a required module that is only available as a pre-release.
 
         .PARAMETER SkipDuplicates
             When set, repositories that already hold this module version are skipped instead of failing.
@@ -132,7 +133,9 @@ function _Publish-PSModuleToRepositories {
             $missingDependencies = @(
                 foreach ($dependency in $dependencies) {
                     $versionArgs = $dependency.Version ? @{ Version = $dependency.Version } : @{}
+                    # A pre-release module can depend on a module that is only available as a pre-release
                     $found = Find-PSResource -Name $dependency.Name `
+                                             -Prerelease:$AllowPrerelease `
                                              -Repository $repo.Name `
                                              -ErrorAction SilentlyContinue `
                                              @versionArgs `
