@@ -59,8 +59,13 @@ Describe '_Repair-PSDataManifestSection' {
         $manifest.PrivateData.PSData.Keys.Count | Should -Be 0
     }
 
-    It 'handles entries separated by semicolons on one line' {
-        $path = New-TestManifest "@{ PrivateData = @{ PSData = @{ Tags = @(); ProjectUri = 'https://example.com'; ReleaseNotes = '' } } }"
+    It 'handles entries separated by semicolons: <Name>' -ForEach @(
+        @{ Name = 'on one line'; Content = "@{ PrivateData = @{ PSData = @{ Tags = @(); ProjectUri = 'https://example.com'; ReleaseNotes = '' } } }" }
+        @{ Name = 'with a block comment before the semicolon'; Content = "@{ PrivateData = @{ PSData = @{ Tags = @() <# intentionally empty #>; ProjectUri = 'https://example.com' } } }" }
+        @{ Name = 'with the semicolon on the next line'; Content = "@{ PrivateData = @{ PSData = @{ Tags = @() # empty`n ; ProjectUri = 'https://example.com' } } }" }
+        @{ Name = 'with the empty entry last'; Content = "@{ PrivateData = @{ PSData = @{ ProjectUri = 'https://example.com'; Tags = @() <# empty #> } } }" }
+    ) {
+        $path = New-TestManifest $Content
 
         _Repair-PSDataManifestSection -Path $path
 

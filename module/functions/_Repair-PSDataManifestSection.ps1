@@ -53,7 +53,8 @@ function _Repair-PSDataManifestSection {
     $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 
     $parseErrors = $null
-    $ast = [System.Management.Automation.Language.Parser]::ParseInput($content, [ref]$null, [ref]$parseErrors)
+    $tokens = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($content, [ref]$tokens, [ref]$parseErrors)
     if ($parseErrors) {
         throw "Unable to parse the module manifest '$resolvedPath': $($parseErrors[0].Message)"
     }
@@ -108,11 +109,13 @@ function _Repair-PSDataManifestSection {
         foreach ($entry in $entriesToRemove) {
             $start = $entry.Item1.Extent.StartOffset
             $end = $entry.Item2.Extent.EndOffset
-            # Also remove a ';' that separates the entry from the next one on the same line, which would
-            # otherwise be left at the start of the hashtable and make it invalid
-            $separator = [regex]::Match($content.Substring($end), '^[ \t]*;')
-            if ($separator.Success) {
-                $end += $separator.Length
+            # Also remove a ';' that separates the entry from the next one, which would otherwise be left at
+            # the start of the hashtable and make it invalid. Comments and newlines can come before the ';'.
+            $separator = $tokens |
+                Where-Object { $_.Extent.StartOffset -ge $end -and $_.Kind -notin 'Comment', 'NewLine', 'LineContinuation' } |
+                Select-Object -First 1
+            if ($separator -and $separator.Kind -eq 'Semi') {
+                $end = $separator.Extent.EndOffset
             }
             Add-Edit $start $end '' "Removing the entry 'PrivateData.PSData.$($entry.Item1.Extent.Text)'"
         }
