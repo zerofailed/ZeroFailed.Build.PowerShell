@@ -45,7 +45,8 @@ task PublishPowerShellModules `
             Where-Object { $_ } |
             ForEach-Object {
                 $requiredModule = _Get-RequiredModuleSpecification -RequiredModule $_
-                $installArgs = @{ Name = $requiredModule.Name; Scope = 'CurrentUser'; TrustRepository = $true; Repository = 'PSGallery' }
+                # A pre-release module can depend on a module that is only available as a pre-release
+                $installArgs = @{ Name = $requiredModule.Name; Scope = 'CurrentUser'; TrustRepository = $true; Repository = 'PSGallery'; Prerelease = $isPreRelease }
                 if ($requiredModule.Version) {
                     $installArgs.Version = $requiredModule.Version
                 }
