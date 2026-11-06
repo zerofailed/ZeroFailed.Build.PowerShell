@@ -8,7 +8,7 @@ $PowerShellModulesToPublish = @()
 # Synopsis: When true, publishing any PowerShell modules will be skipped.
 $SkipPowerShellPublish = $false
 
-# Synopsis: When true, 'Publish-Module' is run with '-Force'. This skips confirmation prompts and some version-ordering checks (e.g. publishing a pre-release after the stable version of the same version number). It does NOT allow re-publishing a version that already exists in the repository - see 'PowerShellModulePublishSkipDuplicates'.
+# Synopsis: Deprecated, and has no effect. Modules are published with PSResourceGet's 'Publish-PSResource', which does not have a '-Force' parameter. When true, a warning is written. To allow re-running a publish that only partly succeeded, see 'PowerShellModulePublishSkipDuplicates'.
 $EnablePowerShellModuleForcePublish = $false
 
 # Synopsis: When true, a repository that already holds the module version being published is skipped with a warning instead of failing the build. This makes it safe to re-run a publish that only partly succeeded.

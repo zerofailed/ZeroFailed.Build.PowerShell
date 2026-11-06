@@ -8,9 +8,9 @@ function _Test-IsDuplicatePublishError {
             Returns true when a publish error reports that the module version already exists in the repository.
 
         .DESCRIPTION
-            Recognises the PowerShellGet 'ModuleVersionIsAlreadyAvailableInTheGallery' error and the NuGet
-            '409 Conflict' response that feeds such as GitHub Packages and PSGallery return when the
-            version has already been pushed.
+            Recognises the NuGet '409 Conflict' response that feeds such as GitHub Packages and PSGallery
+            return when the version has already been pushed. Publish-PSResource includes this response in
+            its error message.
 
         .PARAMETER ErrorRecord
             The error record to inspect.
@@ -22,7 +22,7 @@ function _Test-IsDuplicatePublishError {
             System.Boolean.
 
         .EXAMPLE
-            PS:> try { Publish-Module ... } catch { if (_Test-IsDuplicatePublishError -ErrorRecord $_) { ... } }
+            PS:> try { Publish-PSResource ... } catch { if (_Test-IsDuplicatePublishError -ErrorRecord $_) { ... } }
     #>
     [CmdletBinding()]
     [OutputType([bool])]
@@ -30,10 +30,6 @@ function _Test-IsDuplicatePublishError {
         [Parameter(Mandatory)]
         [System.Management.Automation.ErrorRecord] $ErrorRecord
     )
-
-    if ($ErrorRecord.FullyQualifiedErrorId -like 'ModuleVersionIsAlreadyAvailableInTheGallery*') {
-        return $true
-    }
 
     return [bool]($ErrorRecord.Exception.Message -match '409 \(?Conflict|feed already contains')
 }

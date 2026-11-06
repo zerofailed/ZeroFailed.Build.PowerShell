@@ -27,13 +27,13 @@ This group contains functionality for maintaining PowerShell module documentatio
 
 ## Publish
 
-This group contains functionality for publishing PowerShell modules to repositories.
+This group contains functionality for publishing PowerShell modules to repositories. It uses PSResourceGet (`Microsoft.PowerShell.PSResourceGet`), not PowerShellGet.
 
 ### Properties
 
 | Name                                    | Default Value | ENV Override                          | Description                                                                                                                                                                                                              |
 | --------------------------------------- | ------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `EnablePowerShellModuleForcePublish`    | $false        |                                       | When true, `Publish-Module` is run with `-Force`. This skips confirmation prompts and some version-ordering checks. It does **not** allow re-publishing a version that already exists; see `PowerShellModulePublishSkipDuplicates`. |
+| `EnablePowerShellModuleForcePublish`    | $false        |                                       | **Deprecated**, and has no effect. Modules are published with PSResourceGet's `Publish-PSResource`, which does not have a `-Force` parameter. When `$true`, a warning is written. See `PowerShellModulePublishSkipDuplicates` to re-run a publish that only partly succeeded. |
 | `PowerShellModulePublishSkipDuplicates` | $true         | `ZF_BUILD_PS_SKIP_PUBLISH_DUPLICATES` | When true, a repository that already holds the module version is skipped with a warning instead of failing the build. See [note below](#retrying-a-failed-publish).                                                     |
 | `PowerShellModulesToPublish`            | @()           |                                       | Configures the PowerShell modules to be published to a PowerShell repository (e.g. PSGallery). See [note below](#powershellmodulestopublish) for configuration syntax.                                                   |
 | `PowerShellRepositories`                | @()           |                                       | The PowerShell repositories to publish to (e.g. PSGallery and GitHub Packages). See [note below](#powershellrepositories) for configuration syntax.                                                                       |
@@ -64,12 +64,14 @@ Each entry is a hashtable with these keys:
 
 | Key                       | Required | Description                                                                                                                  |
 | ------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `Name`                    | yes      | The name of the PowerShell repository.                                                                                       |
+| `Name`                    | yes      | The name of the PowerShell repository, as registered with PSResourceGet (see `Get-PSResourceRepository`).                    |
 | `ApiKey`                  | no       | The API key to use when publishing.                                                                                          |
-| `SourceLocation`          | no       | The repository's source URI. When set, the repository is registered (as trusted) if it is not registered already.            |
-| `PublishLocation`         | no       | The repository's publish URI. Defaults to `SourceLocation`.                                                                  |
-| `Credential`              | no       | A `PSCredential` used to register the repository and to publish to it.                                                       |
+| `SourceLocation`          | no       | The repository's URI. When set, the repository is registered with PSResourceGet (as trusted) if it is not registered already. |
+| `PublishLocation`         | no       | Not supported. PSResourceGet publishes to the repository's URI. A warning is written when this differs from `SourceLocation`. |
+| `Credential`              | no       | A `PSCredential` used to look for existing versions in the repository and to publish to it.                                  |
 | `BlockPreReleaseVersions` | no       | When `$true`, pre-release versions are not published to this repository (it is not registered either). Defaults to `$false`. |
+
+PSResourceGet keeps its own list of repositories. A repository that is registered only with PowerShellGet's `Register-PSRepository` is not found, so either set `SourceLocation` or register it with `Register-PSResourceRepository`.
 
 Any value can be a scriptblock. Scriptblocks are evaluated when the publish task runs, so secrets are only read when they are needed.
 
@@ -93,6 +95,12 @@ $PowerShellRepositories = @(
 )
 ```
 
+#### Required modules
+
+Before a module is published to a repository, each module in its manifest's `RequiredModules` must exist in that repository, so that the published module can be installed from it. When a required module is missing, publishing to that repository fails. Modules listed in the manifest's `PrivateData.PSData.ExternalModuleDependencies` are not checked, because they are installed from somewhere else. When a pre-release version is published, a pre-release version of a required module also counts.
+
+PSResourceGet cannot publish a module whose `RequiredModules` has a wildcard `MaximumVersion` (e.g. `'5.*'`). When a manifest has one, publishing fails before any repository is published to. Use an explicit maximum version instead (e.g. `'5.99999999'` instead of `'5.*'`), or remove `MaximumVersion`.
+
 #### Retrying a failed publish
 
 Each module is published to every repository, even when publishing to an earlier repository fails. When any repository fails, the build fails after all repositories have been attempted, and the error lists each failed repository.
@@ -101,8 +109,8 @@ When `PowerShellModulePublishSkipDuplicates` is `$true` (the default), a reposit
 
 A version counts as already published when either:
 
-- `Find-Module` finds that exact version in the repository, or
-- `Publish-Module` fails with PowerShellGet's `ModuleVersionIsAlreadyAvailableInTheGallery` error, or with a NuGet `409 (Conflict)` response.
+- `Find-PSResource` finds that exact version in the repository, or
+- `Publish-PSResource` fails with a NuGet `409 (Conflict)` response.
 
 Set `PowerShellModulePublishSkipDuplicates` to `$false` if you want an existing version to fail the build.
 

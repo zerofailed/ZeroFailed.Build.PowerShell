@@ -9,47 +9,61 @@ BeforeAll {
 Describe '_Register-PSRepositoryIfMissing' {
 
     BeforeEach {
-        Mock Register-PSRepository {}
+        Mock Register-PSResourceRepository {}
+        Mock Write-Warning {}
     }
 
     It 'does nothing when the repository is already registered' {
-        Mock Get-PSRepository { [pscustomobject]@{ Name = 'PSGallery' } }
+        Mock Get-PSResourceRepository { [pscustomobject]@{ Name = 'PSGallery' } }
 
         _Register-PSRepositoryIfMissing -Name 'PSGallery'
 
-        Should -Invoke Register-PSRepository -Times 0 -Exactly
+        Should -Invoke Register-PSResourceRepository -Times 0 -Exactly
     }
 
-    It 'registers a missing repository as trusted, defaulting PublishLocation to SourceLocation' {
-        Mock Get-PSRepository {}
+    It 'registers a missing repository as trusted, using SourceLocation as its URI' {
+        Mock Get-PSResourceRepository {}
 
         _Register-PSRepositoryIfMissing -Name 'GitHubPackages' -SourceLocation 'https://nuget.pkg.github.com/org/index.json'
 
-        Should -Invoke Register-PSRepository -Times 1 -Exactly -ParameterFilter {
+        Should -Invoke Register-PSResourceRepository -Times 1 -Exactly -ParameterFilter {
             $Name -eq 'GitHubPackages' -and
-            $SourceLocation -eq 'https://nuget.pkg.github.com/org/index.json' -and
-            $PublishLocation -eq 'https://nuget.pkg.github.com/org/index.json' -and
-            $InstallationPolicy -eq 'Trusted' -and
-            $null -eq $Credential
+            $Uri -eq 'https://nuget.pkg.github.com/org/index.json' -and
+            $Trusted
         }
+        Should -Invoke Write-Warning -Times 0 -Exactly
     }
 
-    It 'passes an explicit PublishLocation and Credential' {
-        Mock Get-PSRepository {}
-        $cred = [pscredential]::new('user', (ConvertTo-SecureString 'secret' -AsPlainText -Force))
+    It 'does not warn when PublishLocation is the same as SourceLocation' {
+        Mock Get-PSResourceRepository {}
 
-        _Register-PSRepositoryIfMissing -Name 'Feed' -SourceLocation 'https://feed/index.json' -PublishLocation 'https://feed/publish' -Credential $cred
+        _Register-PSRepositoryIfMissing -Name 'Feed' -SourceLocation 'https://feed/index.json' -PublishLocation 'https://feed/index.json'
 
-        Should -Invoke Register-PSRepository -Times 1 -Exactly -ParameterFilter {
-            $PublishLocation -eq 'https://feed/publish' -and
-            $Credential.UserName -eq 'user'
-        }
+        Should -Invoke Write-Warning -Times 0 -Exactly
+    }
+
+    It 'warns that a different PublishLocation is not used' {
+        Mock Get-PSResourceRepository {}
+
+        _Register-PSRepositoryIfMissing -Name 'Feed' -SourceLocation 'https://feed/index.json' -PublishLocation 'https://feed/publish'
+
+        Should -Invoke Write-Warning -Times 1 -Exactly -ParameterFilter { $Message -like "*'PublishLocation'*'Feed'*not used*" }
+        Should -Invoke Register-PSResourceRepository -Times 1 -Exactly -ParameterFilter { $Uri -eq 'https://feed/index.json' }
+    }
+
+    It 'warns that a different PublishLocation is not used, when the repository is already registered' {
+        Mock Get-PSResourceRepository { [pscustomobject]@{ Name = 'PSGallery' } }
+
+        _Register-PSRepositoryIfMissing -Name 'PSGallery' -SourceLocation 'https://www.powershellgallery.com/api/v2' -PublishLocation 'https://www.powershellgallery.com/api/v2/package/'
+
+        Should -Invoke Write-Warning -Times 1 -Exactly -ParameterFilter { $Message -like "*'PublishLocation'*'PSGallery'*not used*" }
+        Should -Invoke Register-PSResourceRepository -Times 0 -Exactly
     }
 
     It 'throws when the repository is missing and no SourceLocation is given' {
-        Mock Get-PSRepository {}
+        Mock Get-PSResourceRepository {}
 
         { _Register-PSRepositoryIfMissing -Name 'Unknown' } | Should -Throw "*not registered*"
-        Should -Invoke Register-PSRepository -Times 0 -Exactly
+        Should -Invoke Register-PSResourceRepository -Times 0 -Exactly
     }
 }

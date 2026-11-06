@@ -28,33 +28,48 @@ task PublishPowerShellModules `
     foreach ($repo in $repositories) {
         _Register-PSRepositoryIfMissing -Name $repo.Name `
                                         -SourceLocation $repo.SourceLocation `
-                                        -PublishLocation $repo.PublishLocation `
-                                        -Credential $repo.Credential
+                                        -PublishLocation $repo.PublishLocation
+    }
+
+    if ($EnablePowerShellModuleForcePublish) {
+        Write-Warning "'EnablePowerShellModuleForcePublish' has no effect: Publish-PSResource does not have a '-Force' parameter"
     }
 
     foreach ($module in $PowerShellModulesToPublish) {
 
         Write-Build White "Publishing module: $($module.ModulePath)"
 
-        # Ensure any required modules are installed
+        # Ensure any required modules are installed, because publishing validates the module manifest
         $manifest = Get-Content -Raw $module.ModulePath | Invoke-Expression
         $manifest.RequiredModules |
             Where-Object { $_ } |
             ForEach-Object {
-                if ($_ -is [hashtable]) {
-                    Install-Module -Name $_['ModuleName'] -RequiredVersion $_['RequiredVersion'] -Scope CurrentUser -Force -Repository PSGallery
+                $requiredModule = _Get-RequiredModuleSpecification -RequiredModule $_
+                # A pre-release module can depend on a module that is only available as a pre-release
+                $installArgs = @{ Name = $requiredModule.Name; Scope = 'CurrentUser'; TrustRepository = $true; Repository = 'PSGallery'; Prerelease = $isPreRelease }
+                if ($requiredModule.Version) {
+                    $installArgs.Version = $requiredModule.Version
                 }
-                else {
-                    Install-Module -Name $_ -Scope CurrentUser -Force -Repository PSGallery
-                }
+                Install-PSResource @installArgs
             }
 
-        Update-ModuleManifest -Path $module.ModulePath `
-                              -ModuleVersion $script:GitVersion.MajorMinorPatch `
-                              -Prerelease $safePreReleaseTag `
-                              -FunctionsToExport $module.FunctionsToExport `
-                              -CmdletsToExport $module.CmdletsToExport `
-                              -AliasesToExport $module.AliasesToExport
+        $manifestArgs = @{
+            ModuleVersion = $script:GitVersion.MajorMinorPatch
+            FunctionsToExport = $module.FunctionsToExport
+            CmdletsToExport = $module.CmdletsToExport
+            AliasesToExport = $module.AliasesToExport
+        }
+        # Update-PSModuleManifest does not accept an empty pre-release label
+        if ($safePreReleaseTag) {
+            $manifestArgs.Prerelease = $safePreReleaseTag
+        }
+        # Update-PSModuleManifest fails when the manifest has no PSData section, or an empty PSData entry
+        # (e.g. "ExternalModuleDependencies = @()"). It also keeps an existing pre-release label when it is not
+        # given one, so remove that label for a stable build.
+        _Repair-PSDataManifestSection -Path $module.ModulePath -RemovePrerelease:(!$safePreReleaseTag)
+        # Update-PSModuleManifest writes a hashtable in PrivateData (e.g. the 'ZeroFailed' metadata) as the text
+        # 'System.Collections.Hashtable', so those entries are put back after the update
+        _Update-PSModuleManifestKeepingPrivateData -Path $module.ModulePath -UpdateArguments $manifestArgs
 
         $moduleVersion = $script:GitVersion.MajorMinorPatch
         if ($safePreReleaseTag) {
@@ -65,7 +80,6 @@ task PublishPowerShellModules `
                                         -Version $moduleVersion `
                                         -Repositories $repositories `
                                         -AllowPrerelease:$isPreRelease `
-                                        -Force:$EnablePowerShellModuleForcePublish `
                                         -SkipDuplicates:$PowerShellModulePublishSkipDuplicates
     }
 }

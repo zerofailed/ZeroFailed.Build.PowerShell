@@ -16,11 +16,21 @@ function _Publish-PSModuleToRepositories {
             with a warning instead of failing. This makes a retry safe after a partial failure: the
             repositories that succeeded earlier are skipped, and only the remaining ones are published to.
             A duplicate is detected in two ways:
-            - before publishing, by looking for the exact version in the repository (Find-Module)
+            - before publishing, by looking for the exact version in the repository (Find-PSResource)
             - after publishing fails, by checking whether the error reports that the version already exists
 
+            Before publishing, each module in the manifest's 'RequiredModules' must exist in the repository,
+            so that the published module can be installed from it. Modules listed in the manifest's
+            'PrivateData.PSData.ExternalModuleDependencies' are not checked, because they are installed from
+            somewhere else. Publish-PSResource's own dependency check is turned off, because it does not skip
+            external dependencies.
+
+            An error is thrown before publishing to any repository when a 'RequiredModules' entry has a
+            wildcard 'MaximumVersion' (e.g. '5.*'), because Publish-PSResource cannot publish such a module.
+
         .PARAMETER ModulePath
-            The path to the module manifest (.psd1) to publish.
+            The path to the module manifest (.psd1) to publish. The version in the manifest, including any
+            pre-release label, is the version that is published.
 
         .PARAMETER Version
             The full version of the module, including any pre-release tag (e.g. '1.2.3' or '1.2.3-beta0001').
@@ -30,10 +40,8 @@ function _Publish-PSModuleToRepositories {
             uses the keys 'Name', 'ApiKey' and 'Credential'.
 
         .PARAMETER AllowPrerelease
-            Passed to Publish-Module and Find-Module, to allow a pre-release version.
-
-        .PARAMETER Force
-            Passed to Publish-Module.
+            Passed to Find-PSResource as 'Prerelease', so that the duplicate check can find a pre-release version,
+            and the required modules check can find a required module that is only available as a pre-release.
 
         .PARAMETER SkipDuplicates
             When set, repositories that already hold this module version are skipped instead of failing.
@@ -63,14 +71,35 @@ function _Publish-PSModuleToRepositories {
         [switch] $AllowPrerelease,
 
         [Parameter()]
-        [switch] $Force,
-
-        [Parameter()]
         [switch] $SkipDuplicates
     )
 
     $moduleName = [IO.Path]::GetFileNameWithoutExtension($ModulePath)
     $failures = [System.Collections.Generic.List[string]]::new()
+
+    # The required modules that must be in each repository, i.e. all of them except the external ones
+    $manifest = Import-PowerShellDataFile -Path $ModulePath
+
+    # Publish-PSResource cannot pack a module that has a wildcard MaximumVersion (e.g. '5.*') in its
+    # RequiredModules, and fails with an unclear error. So fail before publishing to any repository.
+    $wildcardModules = @(
+        $manifest.RequiredModules |
+            Where-Object { $_ -is [hashtable] -and $_['MaximumVersion'] -match '\*' } |
+            ForEach-Object { "$($_['ModuleName']) (MaximumVersion '$($_['MaximumVersion'])')" }
+    )
+    if ($wildcardModules) {
+        throw ("Unable to publish $moduleName v${Version}: PSResourceGet cannot publish a module whose 'RequiredModules' has a wildcard 'MaximumVersion': " +
+               ($wildcardModules -join ', ') +
+               ". Use an explicit 'MaximumVersion' instead (e.g. '5.99999999' instead of '5.*'), or remove it.")
+    }
+
+    $externalModules = @($manifest.PrivateData.PSData.ExternalModuleDependencies | Where-Object { $_ })
+    $dependencies = @(
+        $manifest.RequiredModules |
+            Where-Object { $_ } |
+            ForEach-Object { _Get-RequiredModuleSpecification -RequiredModule $_ } |
+            Where-Object { $_.Name -notin $externalModules }
+    )
 
     foreach ($repo in $Repositories) {
         Write-Host "Publishing $moduleName v$Version to repository: $($repo.Name)"
@@ -85,12 +114,12 @@ function _Publish-PSModuleToRepositories {
                 # This check is best-effort: if it fails, publish anyway and rely on the error check below
                 $existing = $null
                 try {
-                    $existing = Find-Module -Name $moduleName `
-                                            -RequiredVersion $Version `
-                                            -AllowPrerelease:$AllowPrerelease `
-                                            -Repository $repo.Name `
-                                            -ErrorAction SilentlyContinue `
-                                            @credentialArgs
+                    $existing = Find-PSResource -Name $moduleName `
+                                                -Version $Version `
+                                                -Prerelease:$AllowPrerelease `
+                                                -Repository $repo.Name `
+                                                -ErrorAction SilentlyContinue `
+                                                @credentialArgs
                 }
                 catch {
                     Write-Verbose "Unable to check repository '$($repo.Name)' for an existing version: $($_.Exception.Message)"
@@ -101,14 +130,32 @@ function _Publish-PSModuleToRepositories {
                 }
             }
 
-            Publish-Module -Name $ModulePath `
-                           -Repository $repo.Name `
-                           -NuGetApiKey $repo.ApiKey `
-                           -AllowPrerelease:$AllowPrerelease `
-                           -Force:$Force `
-                           -ErrorAction Stop `
-                           -Verbose `
-                           @credentialArgs
+            $missingDependencies = @(
+                foreach ($dependency in $dependencies) {
+                    $versionArgs = $dependency.Version ? @{ Version = $dependency.Version } : @{}
+                    # A pre-release module can depend on a module that is only available as a pre-release
+                    $found = Find-PSResource -Name $dependency.Name `
+                                             -Prerelease:$AllowPrerelease `
+                                             -Repository $repo.Name `
+                                             -ErrorAction SilentlyContinue `
+                                             @versionArgs `
+                                             @credentialArgs
+                    if (!$found) {
+                        $dependency.Version ? "$($dependency.Name) $($dependency.Version)" : $dependency.Name
+                    }
+                }
+            )
+            if ($missingDependencies) {
+                throw "These required modules are not in the repository, and are not listed in 'ExternalModuleDependencies': $($missingDependencies -join ', ')"
+            }
+
+            Publish-PSResource -Path $ModulePath `
+                               -Repository $repo.Name `
+                               -ApiKey $repo.ApiKey `
+                               -SkipDependenciesCheck `
+                               -ErrorAction Stop `
+                               -Verbose `
+                               @credentialArgs
         }
         catch {
             if ($SkipDuplicates -and (_Test-IsDuplicatePublishError -ErrorRecord $_)) {
