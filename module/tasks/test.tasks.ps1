@@ -12,7 +12,7 @@ task InstallPester {
                                 Select-Object -ExpandProperty Version |
                                 ForEach-Object { $_.ToString() }
     if (!$existingModule -or $existingPesterVersions -notcontains $PesterVersion) {
-        Install-Module Pester -RequiredVersion $PesterVersion -Force -Scope CurrentUser -SkipPublisherCheck
+        Install-PSResource Pester -Version "[$PesterVersion]" -Prerelease:($PesterVersion -match '-') -Scope CurrentUser -TrustRepository -Repository PSGallery
     }
     Get-Module Pester | Remove-Module
     Import-Module Pester -RequiredVersion $PesterVersion

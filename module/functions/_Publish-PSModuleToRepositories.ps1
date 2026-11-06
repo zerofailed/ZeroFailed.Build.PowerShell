@@ -16,11 +16,12 @@ function _Publish-PSModuleToRepositories {
             with a warning instead of failing. This makes a retry safe after a partial failure: the
             repositories that succeeded earlier are skipped, and only the remaining ones are published to.
             A duplicate is detected in two ways:
-            - before publishing, by looking for the exact version in the repository (Find-Module)
+            - before publishing, by looking for the exact version in the repository (Find-PSResource)
             - after publishing fails, by checking whether the error reports that the version already exists
 
         .PARAMETER ModulePath
-            The path to the module manifest (.psd1) to publish.
+            The path to the module manifest (.psd1) to publish. The version in the manifest, including any
+            pre-release label, is the version that is published.
 
         .PARAMETER Version
             The full version of the module, including any pre-release tag (e.g. '1.2.3' or '1.2.3-beta0001').
@@ -30,10 +31,7 @@ function _Publish-PSModuleToRepositories {
             uses the keys 'Name', 'ApiKey' and 'Credential'.
 
         .PARAMETER AllowPrerelease
-            Passed to Publish-Module and Find-Module, to allow a pre-release version.
-
-        .PARAMETER Force
-            Passed to Publish-Module.
+            Passed to Find-PSResource as 'Prerelease', so that the duplicate check can find a pre-release version.
 
         .PARAMETER SkipDuplicates
             When set, repositories that already hold this module version are skipped instead of failing.
@@ -63,9 +61,6 @@ function _Publish-PSModuleToRepositories {
         [switch] $AllowPrerelease,
 
         [Parameter()]
-        [switch] $Force,
-
-        [Parameter()]
         [switch] $SkipDuplicates
     )
 
@@ -85,12 +80,12 @@ function _Publish-PSModuleToRepositories {
                 # This check is best-effort: if it fails, publish anyway and rely on the error check below
                 $existing = $null
                 try {
-                    $existing = Find-Module -Name $moduleName `
-                                            -RequiredVersion $Version `
-                                            -AllowPrerelease:$AllowPrerelease `
-                                            -Repository $repo.Name `
-                                            -ErrorAction SilentlyContinue `
-                                            @credentialArgs
+                    $existing = Find-PSResource -Name $moduleName `
+                                                -Version $Version `
+                                                -Prerelease:$AllowPrerelease `
+                                                -Repository $repo.Name `
+                                                -ErrorAction SilentlyContinue `
+                                                @credentialArgs
                 }
                 catch {
                     Write-Verbose "Unable to check repository '$($repo.Name)' for an existing version: $($_.Exception.Message)"
@@ -101,14 +96,12 @@ function _Publish-PSModuleToRepositories {
                 }
             }
 
-            Publish-Module -Name $ModulePath `
-                           -Repository $repo.Name `
-                           -NuGetApiKey $repo.ApiKey `
-                           -AllowPrerelease:$AllowPrerelease `
-                           -Force:$Force `
-                           -ErrorAction Stop `
-                           -Verbose `
-                           @credentialArgs
+            Publish-PSResource -Path $ModulePath `
+                               -Repository $repo.Name `
+                               -ApiKey $repo.ApiKey `
+                               -ErrorAction Stop `
+                               -Verbose `
+                               @credentialArgs
         }
         catch {
             if ($SkipDuplicates -and (_Test-IsDuplicatePublishError -ErrorRecord $_)) {
