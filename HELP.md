@@ -95,6 +95,10 @@ $PowerShellRepositories = @(
 )
 ```
 
+#### Required modules
+
+Before a module is published to a repository, each module in its manifest's `RequiredModules` must exist in that repository, so that the published module can be installed from it. When a required module is missing, publishing to that repository fails. Modules listed in the manifest's `PrivateData.PSData.ExternalModuleDependencies` are not checked, because they are installed from somewhere else.
+
 #### Retrying a failed publish
 
 Each module is published to every repository, even when publishing to an earlier repository fails. When any repository fails, the build fails after all repositories have been attempted, and the error lists each failed repository.

@@ -5,6 +5,13 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '_Publish-PSModuleToRepositories.ps1')
     . (Join-Path $PSScriptRoot '_Test-IsDuplicatePublishError.ps1')
+    . (Join-Path $PSScriptRoot '_Get-RequiredModuleSpecification.ps1')
+
+    function New-TestManifest {
+        param([string] $Path, [string] $Content = "@{ ModuleVersion = '1.2.3' }")
+        New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force | Out-Null
+        Set-Content -Path $Path -Value $Content
+    }
 
     function New-TestErrorRecord {
         param([string] $Message, [string] $ErrorId = 'PublishPSResourceError,Microsoft.PowerShell.PSResourceGet.Cmdlets.PublishPSResource')
@@ -17,6 +24,7 @@ BeforeAll {
     }
 
     $modulePath = 'TestDrive:/module/MyModule.psd1'
+    New-TestManifest -Path $modulePath
     $repos = @(
         @{ Name = 'PSGallery'; ApiKey = 'gallery-key' }
         @{ Name = 'GitHubPackages'; ApiKey = 'ghp-key'; Credential = [pscredential]::new('github-actions', (ConvertTo-SecureString 'token' -AsPlainText -Force)) }
@@ -30,6 +38,55 @@ Describe '_Publish-PSModuleToRepositories' {
         Mock Write-Warning {}
         Mock Find-PSResource {}
         Mock Publish-PSResource {}
+    }
+
+    Context 'Required modules' {
+
+        BeforeAll {
+            $depsModulePath = 'TestDrive:/deps/DepsModule.psd1'
+            New-TestManifest -Path $depsModulePath -Content @'
+@{
+    ModuleVersion = '1.2.3'
+    RequiredModules = @(
+        'Simple'
+        @{ ModuleName = 'Ranged'; ModuleVersion = '5.0.0'; MaximumVersion = '5.*' }
+        @{ ModuleName = 'Az.Accounts'; ModuleVersion = '2.0.0' }
+    )
+    PrivateData = @{ PSData = @{ ExternalModuleDependencies = @('Az.Accounts') } }
+}
+'@
+        }
+
+        It 'turns off the Publish-PSResource dependency check' {
+            _Publish-PSModuleToRepositories -ModulePath $modulePath -Version '1.2.3' -Repositories $repos[0]
+
+            Should -Invoke Publish-PSResource -Times 1 -Exactly -ParameterFilter { $SkipDependenciesCheck }
+        }
+
+        It 'looks for each required module that is not external, in each repository, with its version range' {
+            Mock Find-PSResource { [pscustomobject]@{ Name = $Name } }
+
+            _Publish-PSModuleToRepositories -ModulePath $depsModulePath -Version '1.2.3' -Repositories $repos
+
+            Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter { $Name -eq 'Simple' -and !$Version -and $Repository -eq 'PSGallery' }
+            Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter { $Name -eq 'Ranged' -and $Version -eq '[5.0.0, 6)' -and $Repository -eq 'PSGallery' }
+            Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter {
+                $Name -eq 'Simple' -and $Repository -eq 'GitHubPackages' -and $Credential.UserName -eq 'github-actions'
+            }
+            Should -Invoke Find-PSResource -Times 0 -Exactly -ParameterFilter { $Name -eq 'Az.Accounts' }
+            Should -Invoke Publish-PSResource -Times 2 -Exactly
+        }
+
+        It 'fails a repository that is missing a required module, and still publishes to the others' {
+            Mock Find-PSResource { [pscustomobject]@{ Name = $Name } }
+            Mock Find-PSResource {} -ParameterFilter { $Name -eq 'Ranged' -and $Repository -eq 'GitHubPackages' }
+
+            { _Publish-PSModuleToRepositories -ModulePath $depsModulePath -Version '1.2.3' -Repositories $repos } |
+                Should -Throw "*1 of 2 repositories*GitHubPackages: *not in the repository*Ranged ``[5.0.0, 6)*"
+
+            Should -Invoke Publish-PSResource -Times 1 -Exactly -ParameterFilter { $Repository -eq 'PSGallery' }
+            Should -Invoke Publish-PSResource -Times 0 -Exactly -ParameterFilter { $Repository -eq 'GitHubPackages' }
+        }
     }
 
     Context 'Publishing' {

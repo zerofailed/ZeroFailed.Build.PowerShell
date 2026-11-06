@@ -44,19 +44,10 @@ task PublishPowerShellModules `
         $manifest.RequiredModules |
             Where-Object { $_ } |
             ForEach-Object {
-                $installArgs = @{ Scope = 'CurrentUser'; TrustRepository = $true; Repository = 'PSGallery' }
-                if ($_ -is [hashtable]) {
-                    $installArgs.Name = $_['ModuleName']
-                    # Convert the manifest's version keys to a NuGet version range
-                    if ($_['RequiredVersion']) {
-                        $installArgs.Version = "[$($_['RequiredVersion'])]"
-                    }
-                    elseif ($_['ModuleVersion'] -or $_['MaximumVersion']) {
-                        $installArgs.Version = '{0}{1}, {2}{3}' -f ($_['ModuleVersion'] ? '[' : '('), $_['ModuleVersion'], $_['MaximumVersion'], ($_['MaximumVersion'] ? ']' : ')')
-                    }
-                }
-                else {
-                    $installArgs.Name = $_
+                $requiredModule = _Get-RequiredModuleSpecification -RequiredModule $_
+                $installArgs = @{ Name = $requiredModule.Name; Scope = 'CurrentUser'; TrustRepository = $true; Repository = 'PSGallery' }
+                if ($requiredModule.Version) {
+                    $installArgs.Version = $requiredModule.Version
                 }
                 Install-PSResource @installArgs
             }

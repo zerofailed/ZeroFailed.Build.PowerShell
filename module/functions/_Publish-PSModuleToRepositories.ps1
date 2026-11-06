@@ -19,6 +19,12 @@ function _Publish-PSModuleToRepositories {
             - before publishing, by looking for the exact version in the repository (Find-PSResource)
             - after publishing fails, by checking whether the error reports that the version already exists
 
+            Before publishing, each module in the manifest's 'RequiredModules' must exist in the repository,
+            so that the published module can be installed from it. Modules listed in the manifest's
+            'PrivateData.PSData.ExternalModuleDependencies' are not checked, because they are installed from
+            somewhere else. Publish-PSResource's own dependency check is turned off, because it does not skip
+            external dependencies.
+
         .PARAMETER ModulePath
             The path to the module manifest (.psd1) to publish. The version in the manifest, including any
             pre-release label, is the version that is published.
@@ -67,6 +73,16 @@ function _Publish-PSModuleToRepositories {
     $moduleName = [IO.Path]::GetFileNameWithoutExtension($ModulePath)
     $failures = [System.Collections.Generic.List[string]]::new()
 
+    # The required modules that must be in each repository, i.e. all of them except the external ones
+    $manifest = Import-PowerShellDataFile -Path $ModulePath
+    $externalModules = @($manifest.PrivateData.PSData.ExternalModuleDependencies | Where-Object { $_ })
+    $dependencies = @(
+        $manifest.RequiredModules |
+            Where-Object { $_ } |
+            ForEach-Object { _Get-RequiredModuleSpecification -RequiredModule $_ } |
+            Where-Object { $_.Name -notin $externalModules }
+    )
+
     foreach ($repo in $Repositories) {
         Write-Host "Publishing $moduleName v$Version to repository: $($repo.Name)"
 
@@ -96,9 +112,27 @@ function _Publish-PSModuleToRepositories {
                 }
             }
 
+            $missingDependencies = @(
+                foreach ($dependency in $dependencies) {
+                    $versionArgs = $dependency.Version ? @{ Version = $dependency.Version } : @{}
+                    $found = Find-PSResource -Name $dependency.Name `
+                                             -Repository $repo.Name `
+                                             -ErrorAction SilentlyContinue `
+                                             @versionArgs `
+                                             @credentialArgs
+                    if (!$found) {
+                        $dependency.Version ? "$($dependency.Name) $($dependency.Version)" : $dependency.Name
+                    }
+                }
+            )
+            if ($missingDependencies) {
+                throw "These required modules are not in the repository, and are not listed in 'ExternalModuleDependencies': $($missingDependencies -join ', ')"
+            }
+
             Publish-PSResource -Path $ModulePath `
                                -Repository $repo.Name `
                                -ApiKey $repo.ApiKey `
+                               -SkipDependenciesCheck `
                                -ErrorAction Stop `
                                -Verbose `
                                @credentialArgs
