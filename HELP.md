@@ -31,14 +31,15 @@ This group contains functionality for publishing PowerShell modules to repositor
 
 ### Properties
 
-| Name                                 | Default Value | ENV Override                    | Description                                                                                                                                                            |
-| ------------------------------------ | ------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EnablePowerShellModuleForcePublish` | $false        |                                 | When true, the PowerShell module will be published even if the version already exists in the repository.                                                               |
-| `PowerShellModulesToPublish`         | @()           |                                 | Configures the PowerShell modules to be published to a PowerShell repository (e.g. PSGallery). See [note below](#powershellmodulestopublish) for configuration syntax. |
-| `PowerShellRepositories`             | @()           |                                 | The PowerShell repositories to publish to (e.g. PSGallery and GitHub Packages). See [note below](#powershellrepositories) for configuration syntax.                     |
-| `PowerShellRepository`               | "PSGallery"   |                                 | The name of the PowerShell repository to publish to. Only used when `PowerShellRepositories` is empty.                                                                 |
-| `PSRepositoryApiKey`                 | ""            | `ZF_BUILD_PS_REPOSITORY_APIKEY` | The API key to use when publishing to the PowerShell repository. Only used when `PowerShellRepositories` is empty.                                                     |
-| `SkipPowerShellPublish`              | $false        |                                 | When true, publishing any PowerShell modules will be skipped.                                                                                                          |
+| Name                                    | Default Value | ENV Override                          | Description                                                                                                                                                                                                              |
+| --------------------------------------- | ------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `EnablePowerShellModuleForcePublish`    | $false        |                                       | When true, `Publish-Module` is run with `-Force`. This skips confirmation prompts and some version-ordering checks. It does **not** allow re-publishing a version that already exists; see `PowerShellModulePublishSkipDuplicates`. |
+| `PowerShellModulePublishSkipDuplicates` | $true         | `ZF_BUILD_PS_SKIP_PUBLISH_DUPLICATES` | When true, a repository that already holds the module version is skipped with a warning instead of failing the build. See [note below](#retrying-a-failed-publish).                                                     |
+| `PowerShellModulesToPublish`            | @()           |                                       | Configures the PowerShell modules to be published to a PowerShell repository (e.g. PSGallery). See [note below](#powershellmodulestopublish) for configuration syntax.                                                   |
+| `PowerShellRepositories`                | @()           |                                       | The PowerShell repositories to publish to (e.g. PSGallery and GitHub Packages). See [note below](#powershellrepositories) for configuration syntax.                                                                       |
+| `PowerShellRepository`                  | "PSGallery"   |                                       | The name of the PowerShell repository to publish to. Only used when `PowerShellRepositories` is empty.                                                                                                                   |
+| `PSRepositoryApiKey`                    | ""            | `ZF_BUILD_PS_REPOSITORY_APIKEY`       | The API key to use when publishing to the PowerShell repository. Only used when `PowerShellRepositories` is empty.                                                                                                       |
+| `SkipPowerShellPublish`                 | $false        |                                       | When true, publishing any PowerShell modules will be skipped.                                                                                                                                                            |
 
 #### PowerShellModulesToPublish
 
@@ -91,6 +92,19 @@ $PowerShellRepositories = @(
     }
 )
 ```
+
+#### Retrying a failed publish
+
+Each module is published to every repository, even when publishing to an earlier repository fails. When any repository fails, the build fails after all repositories have been attempted, and the error lists each failed repository.
+
+When `PowerShellModulePublishSkipDuplicates` is `$true` (the default), a repository that already holds the module version is skipped with a warning. So if publishing succeeds for PSGallery but fails for GitHub Packages, you can re-run the same build: PSGallery is skipped and only GitHub Packages is published to.
+
+A version counts as already published when either:
+
+- `Find-Module` finds that exact version in the repository, or
+- `Publish-Module` fails with PowerShellGet's `ModuleVersionIsAlreadyAvailableInTheGallery` error, or with a NuGet `409 (Conflict)` response.
+
+Set `PowerShellModulePublishSkipDuplicates` to `$false` if you want an existing version to fail the build.
 
 ### Tasks
 
