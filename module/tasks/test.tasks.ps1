@@ -7,15 +7,26 @@
 # Synopsis: Installs the required version of Pester
 task InstallPester {
 
-    [array]$existingModule = Get-Module -ListAvailable Pester
-    $existingPesterVersions = $existingModule |
-                                Select-Object -ExpandProperty Version |
-                                ForEach-Object { $_.ToString() }
-    if (!$existingModule -or $existingPesterVersions -notcontains $PesterVersion) {
-        Install-PSResource Pester -Version "[$PesterVersion]" -Prerelease:($PesterVersion -match '-') -Scope CurrentUser -TrustRepository -Repository PSGallery
+    # A module's 'Version' does not include its pre-release label (e.g. '6.0.0-alpha1'), which is in its manifest's
+    # 'PrivateData.PSData.Prerelease'. So both parts must be compared to find the installed module.
+    $numericVersion, $prereleaseLabel = $PesterVersion -split '-', 2
+    function Get-InstalledPester {
+        Get-Module -ListAvailable Pester |
+            Where-Object { $_.Version -eq [version]$numericVersion -and "$($_.PrivateData.PSData.Prerelease)" -eq "$prereleaseLabel" } |
+            Select-Object -First 1
+    }
+
+    $pester = Get-InstalledPester
+    if (!$pester) {
+        Install-PSResource Pester -Version "[$PesterVersion]" -Prerelease:([bool]$prereleaseLabel) -Scope CurrentUser -TrustRepository -Repository PSGallery
+        $pester = Get-InstalledPester
+        if (!$pester) {
+            throw "Pester $PesterVersion was installed, but could not be found in the available modules"
+        }
     }
     Get-Module Pester | Remove-Module
-    Import-Module Pester -RequiredVersion $PesterVersion
+    # Import-Module's 'RequiredVersion' does not accept a pre-release label, so import the module from its path
+    Import-Module $pester.Path
 }
 
 # Synopsis: Runs all the available Pester tests using modern v5 configuration approach with support for code coverage, filtering, and multiple output formats
