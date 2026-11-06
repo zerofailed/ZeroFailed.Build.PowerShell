@@ -49,12 +49,32 @@ Describe '_Publish-PSModuleToRepositories' {
     ModuleVersion = '1.2.3'
     RequiredModules = @(
         'Simple'
-        @{ ModuleName = 'Ranged'; ModuleVersion = '5.0.0'; MaximumVersion = '5.*' }
+        @{ ModuleName = 'Ranged'; ModuleVersion = '5.0.0'; MaximumVersion = '5.9.9' }
         @{ ModuleName = 'Az.Accounts'; ModuleVersion = '2.0.0' }
     )
     PrivateData = @{ PSData = @{ ExternalModuleDependencies = @('Az.Accounts') } }
 }
 '@
+        }
+
+        It 'fails before publishing to any repository when a required module has a wildcard MaximumVersion' {
+            $wildcardModulePath = 'TestDrive:/wildcard/WildcardModule.psd1'
+            New-TestManifest -Path $wildcardModulePath -Content @'
+@{
+    ModuleVersion = '1.2.3'
+    RequiredModules = @(
+        @{ ModuleName = 'Ranged'; ModuleVersion = '5.0.0'; MaximumVersion = '5.*' }
+        @{ ModuleName = 'Pinned'; ModuleVersion = '1.0.0'; MaximumVersion = '1.9.9' }
+        @{ ModuleName = 'Any'; MaximumVersion = '*' }
+    )
+}
+'@
+
+            { _Publish-PSModuleToRepositories -ModulePath $wildcardModulePath -Version '1.2.3' -Repositories $repos -SkipDuplicates } |
+                Should -Throw "*cannot publish*wildcard 'MaximumVersion': Ranged (MaximumVersion '5.``*'), Any (MaximumVersion '``*')*"
+
+            Should -Invoke Find-PSResource -Times 0 -Exactly
+            Should -Invoke Publish-PSResource -Times 0 -Exactly
         }
 
         It 'turns off the Publish-PSResource dependency check' {
@@ -69,7 +89,7 @@ Describe '_Publish-PSModuleToRepositories' {
             _Publish-PSModuleToRepositories -ModulePath $depsModulePath -Version '1.2.3' -Repositories $repos
 
             Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter { $Name -eq 'Simple' -and !$Version -and $Repository -eq 'PSGallery' }
-            Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter { $Name -eq 'Ranged' -and $Version -eq '[5.0.0, 6)' -and $Repository -eq 'PSGallery' }
+            Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter { $Name -eq 'Ranged' -and $Version -eq '[5.0.0, 5.9.9]' -and $Repository -eq 'PSGallery' }
             Should -Invoke Find-PSResource -Times 1 -Exactly -ParameterFilter {
                 $Name -eq 'Simple' -and $Repository -eq 'GitHubPackages' -and $Credential.UserName -eq 'github-actions'
             }
@@ -82,7 +102,7 @@ Describe '_Publish-PSModuleToRepositories' {
             Mock Find-PSResource {} -ParameterFilter { $Name -eq 'Ranged' -and $Repository -eq 'GitHubPackages' }
 
             { _Publish-PSModuleToRepositories -ModulePath $depsModulePath -Version '1.2.3' -Repositories $repos } |
-                Should -Throw "*1 of 2 repositories*GitHubPackages: *not in the repository*Ranged ``[5.0.0, 6)*"
+                Should -Throw "*1 of 2 repositories*GitHubPackages: *not in the repository*Ranged ``[5.0.0, 5.9.9]*"
 
             Should -Invoke Publish-PSResource -Times 1 -Exactly -ParameterFilter { $Repository -eq 'PSGallery' }
             Should -Invoke Publish-PSResource -Times 0 -Exactly -ParameterFilter { $Repository -eq 'GitHubPackages' }

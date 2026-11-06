@@ -25,6 +25,9 @@ function _Publish-PSModuleToRepositories {
             somewhere else. Publish-PSResource's own dependency check is turned off, because it does not skip
             external dependencies.
 
+            An error is thrown before publishing to any repository when a 'RequiredModules' entry has a
+            wildcard 'MaximumVersion' (e.g. '5.*'), because Publish-PSResource cannot publish such a module.
+
         .PARAMETER ModulePath
             The path to the module manifest (.psd1) to publish. The version in the manifest, including any
             pre-release label, is the version that is published.
@@ -75,6 +78,20 @@ function _Publish-PSModuleToRepositories {
 
     # The required modules that must be in each repository, i.e. all of them except the external ones
     $manifest = Import-PowerShellDataFile -Path $ModulePath
+
+    # Publish-PSResource cannot pack a module that has a wildcard MaximumVersion (e.g. '5.*') in its
+    # RequiredModules, and fails with an unclear error. So fail before publishing to any repository.
+    $wildcardModules = @(
+        $manifest.RequiredModules |
+            Where-Object { $_ -is [hashtable] -and $_['MaximumVersion'] -match '\*' } |
+            ForEach-Object { "$($_['ModuleName']) (MaximumVersion '$($_['MaximumVersion'])')" }
+    )
+    if ($wildcardModules) {
+        throw ("Unable to publish $moduleName v${Version}: PSResourceGet cannot publish a module whose 'RequiredModules' has a wildcard 'MaximumVersion': " +
+               ($wildcardModules -join ', ') +
+               ". Use an explicit 'MaximumVersion' instead (e.g. '5.99999999' instead of '5.*'), or remove it.")
+    }
+
     $externalModules = @($manifest.PrivateData.PSData.ExternalModuleDependencies | Where-Object { $_ })
     $dependencies = @(
         $manifest.RequiredModules |
