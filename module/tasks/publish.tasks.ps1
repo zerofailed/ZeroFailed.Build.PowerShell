@@ -53,7 +53,6 @@ task PublishPowerShellModules `
             }
 
         $manifestArgs = @{
-            Path = $module.ModulePath
             ModuleVersion = $script:GitVersion.MajorMinorPatch
             FunctionsToExport = $module.FunctionsToExport
             CmdletsToExport = $module.CmdletsToExport
@@ -67,7 +66,9 @@ task PublishPowerShellModules `
         # (e.g. "ExternalModuleDependencies = @()"). It also keeps an existing pre-release label when it is not
         # given one, so remove that label for a stable build.
         _Repair-PSDataManifestSection -Path $module.ModulePath -RemovePrerelease:(!$safePreReleaseTag)
-        Update-PSModuleManifest @manifestArgs
+        # Update-PSModuleManifest writes a hashtable in PrivateData (e.g. the 'ZeroFailed' metadata) as the text
+        # 'System.Collections.Hashtable', so those entries are put back after the update
+        _Update-PSModuleManifestKeepingPrivateData -Path $module.ModulePath -UpdateArguments $manifestArgs
 
         $moduleVersion = $script:GitVersion.MajorMinorPatch
         if ($safePreReleaseTag) {
