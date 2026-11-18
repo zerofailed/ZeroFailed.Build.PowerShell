@@ -119,10 +119,11 @@ PrivateData = @{
     ZeroFailed = @{
         ExtensionDependencies = @(
             @{
-                # Assume latest stable version
                 Name = "ZeroFailed.Build.Common"
                 GitRepository = "https://github.com/zerofailed/ZeroFailed.Build.Common"
                 Process = "tasks/build.process.ps1"
+                # >= 1.0.0 and < 2.0.0
+                MinimumVersion = "1.0"
             }
         )
     }
