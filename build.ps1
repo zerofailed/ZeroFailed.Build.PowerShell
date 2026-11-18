@@ -1,4 +1,4 @@
-#Requires -Version 7.1
+#Requires -Version 7.4
 <#
 .PARAMETER ZfModulePath
     The path to import the ZeroFailed module from, instead of installing it. This is useful when testing a local
@@ -44,7 +44,7 @@ param (
     [string] $ZfModulePath,
 
     [Parameter()]
-    [string] $ZfModuleVersion = "2.0.1",
+    [string] $ZfModuleVersion = "2.0.3",
 
     [Parameter()]
     [string] $ZfModuleRepository = "https://nuget.pkg.github.com/zerofailed/index.json",
