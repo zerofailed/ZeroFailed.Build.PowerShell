@@ -10,10 +10,12 @@ task PublishPowerShellModules `
     -After PublishCore `
     Version,{
 
-    # A nominal attempt to make a NuGet-compatible pre-release tag compatible with the
-    # additional restrictions enforced by PowerShell Gallery
-    $safePreReleaseTag = $env:GITVERSION_NuGetPreReleaseTag -replace "-",""
-    $isPreRelease = ![string]::IsNullOrEmpty($script:GitVersion.NuGetPreReleaseTag)
+    # Works with GitVersion v5 and v6 (which does not output 'NuGetPreReleaseTag'), and with a GitVersion override
+    $safePreReleaseTag = _Get-PSModulePrereleaseTag -GitVersion $script:GitVersion
+    $isPreRelease = ![string]::IsNullOrEmpty($safePreReleaseTag)
+    if ($isPreRelease) {
+        Write-Build White "Publishing as a pre-release version, with the pre-release tag: $safePreReleaseTag"
+    }
 
     $repositories = _Resolve-PSPublishRepositories -Repositories $PowerShellRepositories `
                                                    -DefaultRepository $PowerShellRepository `

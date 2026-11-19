@@ -95,6 +95,18 @@ $PowerShellRepositories = @(
 )
 ```
 
+#### Pre-release versions
+
+The module's version comes from the GitVersion output (see ZeroFailed.Build.Common). A build whose GitVersion output has a pre-release label (e.g. `1.2.4-preview.2`) is published as a pre-release version, and is not published to repositories with `BlockPreReleaseVersions` set.
+
+The module's `Prerelease` value has the same format as GitVersion v5's `NuGetPreReleaseTag` output (e.g. `preview0002`), with every character that is not an ASCII letter or digit removed (e.g. `my-feature-2-0004` becomes `myfeature20004`). GitVersion v6 does not output `NuGetPreReleaseTag`, so the value is made from its `PreReleaseLabel` and `PreReleaseNumber` outputs, with the same rules as GitVersion v5:
+
+- The label is converted to lower case.
+- The number has leading zeros, to a minimum of 4 digits, so that versions sort in the correct order (`preview0010` comes after `preview0009`).
+- The label is shortened so that the label and number together are no longer than 20 characters.
+
+So both GitVersion v5 and v6 are supported, and a commit gets the same `Prerelease` value with either version, provided that GitVersion gives it the same pre-release label and number.
+
 #### Required modules
 
 Before a module is published to a repository, each module in its manifest's `RequiredModules` must exist in that repository, so that the published module can be installed from it. When a required module is missing, publishing to that repository fails. Modules listed in the manifest's `PrivateData.PSData.ExternalModuleDependencies` are not checked, because they are installed from somewhere else. When a pre-release version is published, a pre-release version of a required module also counts.
